@@ -150,7 +150,10 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] `deploy/docker-compose.prod.yml`: project `linkedin-poster`, external `bippass` network, alias `linkedin-poster`, no ports, 384M limit, log rotation
 - [x] `linkedin.applybuddy.net` block appended to the BipPass repo's Caddyfile (validated with `caddy validate`; **uncommitted in that repo**) — source in `deploy/Caddyfile.snippet`; 900s proxy timeouts for SSE runs
 - [x] `~/servers/linkedin.sh`: provision / keys [local] / build / deploy / expose (DNS + block checks, graceful reload) / status / logs / backup — `.env` merge tested locally (value over stdin, never printed, 600)
-- [ ] **Needs you:** DNS `linkedin.applybuddy.net → 165.22.176.141` (DNS-only), then go-ahead to run provision → keys → deploy → expose on the droplet
+- [x] DNS `linkedin.applybuddy.net → 165.22.176.141` (DNS-only) — added by user
+- [x] **Deployed 2026-09-24** (`8565f0a`): provision → keys local → deploy → expose. Container healthy at ~119 MB / 384 MB; droplet 402 MB available after; `https://linkedin.applybuddy.net` 200 with a trusted Let's Encrypt cert; bippass.com, api.bippass.com and api.applybuddy.net all 200 after the Caddy reload; SSE streams live through Caddy (first event at 0.74 s)
+- [x] Fix: the droplet refuses bursts of new SSH connections → `linkedin.sh` multiplexes ssh/scp over one connection
+- [ ] **Needs you:** commit `~/servers/linkedin.sh` (servers repo) and the Caddy block in `bippass-backend/deploy/Caddyfile` (BipPass repo) — if the BipPass working copy loses that block, the next `bippass.sh deploy` removes this site
 - [ ] ✅ Tested by user
 
 ---
