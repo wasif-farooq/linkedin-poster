@@ -164,7 +164,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] UI: `TopicPicker` cards in the chat, "Pick a topic" status; CLI numbered picker; `dev scout` prints the whole shortlist
 - [x] Tests: Scout shortlist (7), pick flow e2e (5), API answer validation (184 backend total, 12 frontend)
 - [x] Live: real model shortlisted 5 distinct topics; picked #5 in the browser → research → write → critic pass → review
-- [ ] Deploy to linkedin.applybuddy.net (`~/servers/linkedin.sh deploy`) — after you've tried it
+- [x] Deployed `0348aed` to linkedin.applybuddy.net: container healthy (0 restarts, ~100 MB), picker served, existing conversations kept, neighbours 200
 - [ ] ✅ Tested by user
 
 ---
