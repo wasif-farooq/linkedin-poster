@@ -153,7 +153,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] DNS `linkedin.applybuddy.net → 165.22.176.141` (DNS-only) — added by user
 - [x] **Deployed 2026-09-24** (`8565f0a`): provision → keys local → deploy → expose. Container healthy at ~119 MB / 384 MB; droplet 402 MB available after; `https://linkedin.applybuddy.net` 200 with a trusted Let's Encrypt cert; bippass.com, api.bippass.com and api.applybuddy.net all 200 after the Caddy reload; SSE streams live through Caddy (first event at 0.74 s)
 - [x] Fix: the droplet refuses bursts of new SSH connections → `linkedin.sh` multiplexes ssh/scp over one connection
-- [ ] **Needs you:** commit `~/servers/linkedin.sh` (servers repo) and the Caddy block in `bippass-backend/deploy/Caddyfile` (BipPass repo) — if the BipPass working copy loses that block, the next `bippass.sh deploy` removes this site
+- [x] Committed in their repos: Caddy block → bippass-backend `eecc1f1`, `linkedin.sh` → servers `728ce4a` (not pushed)
 - [ ] ✅ Tested by user
 
 ---
