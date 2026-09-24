@@ -342,7 +342,8 @@ from app.tools.linkedin.oauth import LinkedInToken  # noqa: E402
 
 @pytest.fixture
 def linkedin(monkeypatch):
-    """Fake LinkedIn: records posts instead of calling the API."""
+    """Fake LinkedIn: records posts instead of calling the API (PUBLISH_MODE=api)."""
+    monkeypatch.setattr(get_settings(), "publish_mode", "api")
     posted: list[tuple[str, str]] = []
 
     class FakeClient:
@@ -417,7 +418,7 @@ def test_same_text_is_never_posted_twice(world, linkedin):
     assert world["pending"]() is None  # no confirmation needed: nothing will be posted
 
 
-def test_dry_run_records_without_posting(world, linkedin, monkeypatch):
+def test_dry_run_records_without_posting(world, linkedin, monkeypatch):  # api mode
     monkeypatch.setattr(get_settings(), "publish_dry_run", True)
     world["script"](decision(plan=["publisher"]), decision(reply=""))
     state = world["say"]("post something", APPROVE)
@@ -428,6 +429,8 @@ def test_dry_run_records_without_posting(world, linkedin, monkeypatch):
 
 
 def test_not_connected_is_explained(world, monkeypatch):
+    monkeypatch.setattr(get_settings(), "publish_mode", "api")
+
     def no_token():
         raise LinkedInAuthError("Not connected to LinkedIn yet. Run `linkedin-poster auth`.")
 
@@ -473,3 +476,17 @@ def test_report_that_repeats_plan_note_is_replaced(world):
     state = world["say"]("write a post", APPROVE)
     assert state["messages"][-1].content != note
     assert state["messages"][-1].content.startswith("Your post is approved")
+
+
+# --- share mode (default): "Share on LinkedIn" links, nothing posted by the app ---------
+
+
+def test_share_mode_prepares_link_without_confirmation(world):
+    world["script"](decision(plan=["publisher"]), decision(reply=""))
+    state = world["say"]("post something", APPROVE)
+    result = state["publish_result"]
+    assert result["status"] == "share_ready"
+    assert result["url"].startswith("https://www.linkedin.com/feed/?shareActive=true&text=draft")
+    assert world["pending"]() is None  # LinkedIn's own Post button is the confirmation
+    assert PostRepository().list() == []  # recorded only when the link is actually used
+    assert "Share on LinkedIn" in state["messages"][-1].content

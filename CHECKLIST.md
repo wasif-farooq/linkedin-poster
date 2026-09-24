@@ -142,12 +142,15 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [ ] ✅ Tested by user
 
 ## Phase 12 — Deploy (Docker, linkedin.applybuddy.net on the BipPass droplet)
-- [ ] Access protection for the public site (the API can publish to LinkedIn)
-- [ ] LinkedIn OAuth via a web callback (`https://linkedin.applybuddy.net/...`) instead of the localhost:8765 server
-- [ ] Single image: API + built frontend; `/data` volume for checkpoints, history, token, caches
-- [ ] Compose project on the external `bippass` network, prefixed alias, hard memory limit (co-tenant pattern from applybuddy.sh)
-- [ ] `linkedin.applybuddy.net` site block in the BipPass repo's Caddyfile (bippass.sh deploy overwrites the server copy)
-- [ ] Deploy script in ~/servers (build locally → `docker save | ssh docker load` → compose up), with DNS check before exposing
+- [x] Access: **public, no login** (user's decision). Mitigated by share mode: visitors can't post to LinkedIn through it
+- [x] **Share on LinkedIn links instead of connecting LinkedIn** (on request): `PUBLISH_MODE=share` default — composer pre-filled with the post (+ optional source article → preview card), person presses Post; Copy text fallback; `POST /api/threads/{id}/shared` records it (history status `shared`, Scout dedupe; v1 DB migrated). API mode kept behind `PUBLISH_MODE=api`
+- [x] Web OAuth callback (`/api/linkedin/callback`, one-time expiring state) for API mode on a server
+- [x] `serve` hosts the built frontend with SPA fallback (path-traversal safe)
+- [x] `Dockerfile` (node build → uv/python 3.12 slim, non-root, healthcheck, `/app/data` volume, voice guide seeded) + `.dockerignore`; smoke-tested: 89 MB RSS under a 384 MB limit, image 789 MB
+- [x] `deploy/docker-compose.prod.yml`: project `linkedin-poster`, external `bippass` network, alias `linkedin-poster`, no ports, 384M limit, log rotation
+- [x] `linkedin.applybuddy.net` block appended to the BipPass repo's Caddyfile (validated with `caddy validate`; **uncommitted in that repo**) — source in `deploy/Caddyfile.snippet`; 900s proxy timeouts for SSE runs
+- [x] `~/servers/linkedin.sh`: provision / keys [local] / build / deploy / expose (DNS + block checks, graceful reload) / status / logs / backup — `.env` merge tested locally (value over stdin, never printed, 600)
+- [ ] **Needs you:** DNS `linkedin.applybuddy.net → 165.22.176.141` (DNS-only), then go-ahead to run provision → keys → deploy → expose on the droplet
 - [ ] ✅ Tested by user
 
 ---
@@ -170,5 +173,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - **Phase 6 — API facts (checked 2026-09-24 in LinkedIn docs):** Posts API `POST /rest/posts`, headers `LinkedIn-Version: YYYYMM` + `X-Restli-Protocol-Version: 2.0.0`, post id in `x-restli-id`; commentary uses "little" format with reserved chars `| { } @ [ ] ( ) < > # \ * _ ~`. Hashtags are made alphanumeric-only for that reason.
 - **Phase 10 — dark theme:** the design canvas is light; dark is now the app default per request (light remains one click away and matches the canvas).
 - **Phase 12 — hosting facts (from ~/servers):** BipPass droplet 165.22.176.141, 1 vCPU / ~957 MB RAM + 2 GB swap; BipPass services are capped at ~720 MB and ApplyBuddy already co-tenants there. Caddy (BipPass compose) is the only public listener; co-tenants join the `bippass` network and add their site block to the BipPass repo's Caddyfile.
+- **Phase 12 — sharing vs API:** LinkedIn's official share plugin (`/sharing/share-offsite/?url=`) only takes a URL; pre-filled post text uses the composer link (`/feed/?shareActive=true&text=`), which LinkedIn supports but doesn't formally document — hence the Copy text fallback.
+- **Phase 12 — memory:** droplet ~957 MB + 2 GB swap; BipPass ≤ ~720 MB, ApplyBuddy ≤ 512 MB, LinkedIn Poster ≤ 384 MB (limits overcommit; swap absorbs it; `linkedin.sh status` shows live usage).
 - Tests mock the OpenAI SDK with `httpx2.MockTransport` (the SDK uses `httpx2`; respx only intercepts `httpx`).
 - `uv` created the venv with Python 3.14; project requires >= 3.12.

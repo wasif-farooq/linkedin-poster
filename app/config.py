@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -54,8 +55,15 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""
     linkedin_client_secret: str = ""
     linkedin_redirect_uri: str = "http://localhost:8765/callback"
-    linkedin_version: str = "202609"  # YYYYMM; LinkedIn sunsets versions after ~1 year
+    linkedin_version: str = "202609"
+    # Built React app, served by `serve` when present (the Docker image always has it).
+    frontend_dist: Path = (
+        ROOT_DIR / "frontend" / "dist"
+    )  # YYYYMM; LinkedIn sunsets versions after ~1 year
     publish_dry_run: bool = False  # log + record instead of posting
+    # share = "Share on LinkedIn" links (you press Post on LinkedIn; no app or OAuth)
+    # api   = post directly through the LinkedIn API (needs `auth`)
+    publish_mode: Literal["share", "api"] = "share"
 
     # Writing
     voice_path: Path = ROOT_DIR / "config" / "voice.md"

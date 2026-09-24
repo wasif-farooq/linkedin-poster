@@ -58,11 +58,21 @@ class PostRepository:
             ).fetchone()
         return _record(row) if row else None
 
+    def find_shared(self, text: str) -> PostRecord | None:
+        with connect(self.path) as db:
+            row = db.execute(
+                "SELECT * FROM posts WHERE text_hash = ? AND status = 'shared' "
+                "ORDER BY id DESC LIMIT 1",
+                (text_hash(text),),
+            ).fetchone()
+        return _record(row) if row else None
+
     def recent_topics(self, limit: int = 20) -> list[str]:
-        """Topics of recent real posts, newest first (fed to the Topic Scout for dedupe)."""
+        """Topics of recent real posts (published or shared), newest first — Scout dedupe."""
         with connect(self.path) as db:
             rows = db.execute(
-                "SELECT topic FROM posts WHERE status = 'published' ORDER BY id DESC LIMIT ?",
+                "SELECT topic FROM posts WHERE status IN ('published', 'shared') "
+                "ORDER BY id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [r["topic"] for r in rows]
@@ -70,7 +80,7 @@ class PostRepository:
     def list(self, limit: int = 20, *, include_dry_runs: bool = True) -> list[PostRecord]:
         query = "SELECT * FROM posts"
         if not include_dry_runs:
-            query += " WHERE status = 'published'"
+            query += " WHERE status != 'dry_run'"
         with connect(self.path) as db:
             rows = db.execute(query + " ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [_record(r) for r in rows]

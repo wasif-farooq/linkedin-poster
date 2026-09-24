@@ -107,6 +107,12 @@ export const api = {
       signal,
     ),
 
+  markShared: (id: string, articleUrl: string | null) =>
+    request<ThreadSnapshot>(`/api/threads/${encodeURIComponent(id)}/shared`, {
+      method: 'POST',
+      body: JSON.stringify({ article_url: articleUrl }),
+    }),
+
   history: (includeDryRuns = true) =>
     request<HistoryPost[]>(`/api/history?include_dry_runs=${includeDryRuns}`),
   doctor: () => request<DoctorCheck[]>('/api/doctor'),

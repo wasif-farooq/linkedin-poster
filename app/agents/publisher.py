@@ -1,4 +1,8 @@
-"""Publisher: posts the approved final text to LinkedIn.
+"""Publisher: gets the approved final text onto LinkedIn.
+
+PUBLISH_MODE=share (default): returns a "Share on LinkedIn" link that opens LinkedIn's
+composer pre-filled — the person presses Post there, so nothing can publish on its own.
+PUBLISH_MODE=api: posts through the LinkedIn API, with the safety layers below.
 
 Safety layers (in order):
 1. the graph only routes here when state["approved"] (routing.APPROVAL_REQUIRED) — rechecked here;
@@ -15,6 +19,7 @@ from app.config import get_settings
 from app.db.repository import PostRepository
 from app.tools.linkedin.client import LinkedInClient, post_url
 from app.tools.linkedin.oauth import load_token
+from app.tools.linkedin.share import compose_url, share_text
 
 
 class NotApprovedError(RuntimeError):
@@ -34,6 +39,11 @@ def run(state: Mapping) -> dict:
     existing = repo.find_published(text)
     if existing:
         return _result("already_published", existing.urn, existing.url)
+
+    if get_settings().publish_mode == "share":
+        # Nothing is posted from here: the person opens this link and presses Post on
+        # LinkedIn. It's recorded as shared when they use it (POST …/shared).
+        return _result("share_ready", None, compose_url(share_text(text)))
 
     if get_settings().publish_dry_run:
         repo.add(status="dry_run", topic=title, text=text, source_urls=sources)

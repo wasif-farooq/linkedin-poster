@@ -4,6 +4,7 @@ const styles: Record<ThreadStatus, { label: string; className: string }> = {
   needs_review: { label: 'Needs review', className: 'bg-review-soft text-review' },
   confirm_publish: { label: 'Confirm publish', className: 'bg-review-soft text-review' },
   published: { label: 'Published', className: 'bg-success-soft text-success' },
+  shared: { label: 'Shared', className: 'bg-success-soft text-success' },
   approved: { label: 'Approved', className: 'bg-success-soft text-success' },
   draft: { label: 'Draft', className: 'bg-line text-ink-2' },
   new: { label: 'New', className: 'bg-paper-2 text-ink-3' },

@@ -73,6 +73,8 @@ def _search() -> tuple[Status, str]:
 
 
 def _linkedin() -> tuple[Status, str]:
+    if get_settings().publish_mode == "share":
+        return "ok", "sharing via “Share on LinkedIn” links — no LinkedIn app or connection needed"
     status = linkedin_status()
     if not status["configured"]:
         return "warn", "LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET not set (needed to publish)"

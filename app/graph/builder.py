@@ -162,5 +162,7 @@ def describe(name: str, update: Mapping, state: Mapping) -> str:
         return f"critic: {c['verdict']} (lowest: {low_name} {low})"
     if name == "publisher":
         r = update["publish_result"]
+        if r["status"] == "share_ready":
+            return "publisher: share link ready — open it and press Post on LinkedIn"
         return f"publisher: {r['status']}" + (f" ({r['url']})" if r.get("url") else "")
     return f"{name}: done"

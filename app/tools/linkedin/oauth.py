@@ -168,8 +168,22 @@ def run_auth_flow(
 
     if "code" not in result:
         raise LinkedInAuthError(f"LinkedIn authorization failed: {result.get('error')}")
-    access_token, expires_in = exchange_code(result["code"])
-    with LinkedInClient(access_token, version=s.linkedin_version) as client:
+    return complete_authorization(result["code"])
+
+
+WEB_CALLBACK_PATH = "/api/linkedin/callback"
+
+
+def uses_web_callback() -> bool:
+    """True when LinkedIn redirects to this app's own callback route (a deployed server),
+    rather than to the one-off localhost server that `auth` runs on a workstation."""
+    return urlsplit(get_settings().linkedin_redirect_uri).path == WEB_CALLBACK_PATH
+
+
+def complete_authorization(code: str) -> LinkedInToken:
+    """Exchange the authorization code, look up who connected, save the token."""
+    access_token, expires_in = exchange_code(code)
+    with LinkedInClient(access_token, version=get_settings().linkedin_version) as client:
         me = client.userinfo()
     token = LinkedInToken(
         access_token=access_token,

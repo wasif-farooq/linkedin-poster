@@ -4,6 +4,7 @@ import type { ResearchBrief, ThreadSnapshot } from '../api/types'
 import { Icon } from './Icon'
 import { PostPreview } from './PostPreview'
 import { ScoreBars, VerdictPill } from './Scores'
+import { ShareActions } from './ShareActions'
 
 type Tab = 'draft' | 'research' | 'sources'
 
@@ -11,7 +12,9 @@ interface DraftPanelProps {
   thread: ThreadSnapshot
   author: string
   running: boolean
+  publishMode: 'share' | 'api'
   onPublish: () => void
+  onShared: (articleUrl: string | null) => void
   onRequestReview: () => void
   onOpenPublishConfirm: () => void
 }
@@ -20,7 +23,9 @@ export function DraftPanel({
   thread,
   author,
   running,
+  publishMode,
   onPublish,
+  onShared,
   onRequestReview,
   onOpenPublishConfirm,
 }: DraftPanelProps) {
@@ -71,7 +76,9 @@ export function DraftPanel({
         <DraftActions
           thread={thread}
           running={running}
+          publishMode={publishMode}
           onPublish={onPublish}
+          onShared={onShared}
           onRequestReview={onRequestReview}
           onOpenPublishConfirm={onOpenPublishConfirm}
         />
@@ -112,7 +119,9 @@ function DraftTab({ thread, author }: { thread: ThreadSnapshot; author: string }
 function DraftActions({
   thread,
   running,
+  publishMode,
   onPublish,
+  onShared,
   onRequestReview,
   onOpenPublishConfirm,
 }: Omit<DraftPanelProps, 'author'>) {
@@ -139,7 +148,10 @@ function DraftActions({
           </button>
         </>
       )}
-      {status === 'approved' && (
+      {publishMode === 'share' && (status === 'approved' || status === 'shared') && (
+        <ShareActions thread={thread} onShared={onShared} />
+      )}
+      {publishMode === 'api' && status === 'approved' && (
         <>
           <StatusLine
             tone="success"

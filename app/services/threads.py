@@ -14,13 +14,14 @@ def config_for(thread_id: str) -> dict:
 
 
 def thread_status(snapshot) -> str:
-    """needs_review | confirm_publish | published | approved | draft | new."""
+    """needs_review | confirm_publish | published | shared | approved | draft | new."""
     if snapshot.interrupts:
         payload = snapshot.interrupts[0].value or {}
         return "confirm_publish" if payload.get("type") == "publish_confirm" else "needs_review"
     values = snapshot.values or {}
-    if (values.get("publish_result") or {}).get("status") == "published":
-        return "published"
+    result_status = (values.get("publish_result") or {}).get("status")
+    if result_status in ("published", "shared"):
+        return result_status
     if values.get("approved"):
         return "approved"
     if values.get("draft"):

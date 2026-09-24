@@ -60,7 +60,7 @@ function StartConversation() {
 }
 
 function Conversation({ threadId }: { threadId: string }) {
-  const { reloadThreads, linkedin } = useShell()
+  const { reloadThreads, linkedin, publishMode } = useShell()
   const [toast, setToast] = useState<{ title: string; body?: string; href?: string } | null>(null)
   const run = useThreadRun(threadId, ({ before, after }) => {
     void reloadThreads()
@@ -167,7 +167,19 @@ function Conversation({ threadId }: { threadId: string }) {
         thread={thread}
         author={linkedin?.connected ? (linkedin.name ?? 'You') : 'You'}
         running={run.running}
+        publishMode={publishMode}
         onPublish={() => sendText('post it')}
+        onShared={(articleUrl) => {
+          // LinkedIn opened in a new tab from the click itself; record it here.
+          api
+            .markShared(thread.id, articleUrl)
+            .then((snapshot) => {
+              run.replaceThread(snapshot)
+              void reloadThreads()
+              setToast({ title: 'Opened on LinkedIn', body: 'Review the post there and press Post.' })
+            })
+            .catch(() => undefined)
+        }}
         onRequestReview={() => sendText('let me review it')}
         onOpenPublishConfirm={() => setPublishDismissed(false)}
       />

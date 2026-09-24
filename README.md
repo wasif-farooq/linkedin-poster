@@ -69,12 +69,18 @@ In the chat, `/draft` shows the current draft and `/quit` exits. Ctrl+C cancels 
 | `x` | Reject: drops the draft but keeps the topic and research |
 | `l` | Later: leaves the review pending, so you can come back with `resume` |
 
-**Publishing:** saying "post it" runs your review first if the draft isn't approved yet. It then asks one last `Publish to LinkedIn as <you>? [y/N]`, where the default is no.
+**Publishing (API mode):** saying "post it" runs your review first if the draft isn't approved yet. It then asks one last `Publish to LinkedIn as <you>? [y/N]`, where the default is no. In the default share mode, "post it" gives you a Share on LinkedIn link instead.
 - Identical text is never posted twice, so resuming after a crash is safe.
 - The API call is never retried automatically.
 - Special characters are escaped for LinkedIn's post format. Unescaped, text after a `(` can silently vanish.
 
-## Connect LinkedIn (one-time)
+## Posting to LinkedIn
+
+By default (`PUBLISH_MODE=share`), an approved post gets a **Share on LinkedIn** button. It opens LinkedIn's composer with the post filled in, optionally with the source article link so LinkedIn shows a preview card, and **you press Post there**. This mode needs no LinkedIn developer app, no OAuth and no stored token, and the app can never post by itself. If the text doesn't appear in the composer, **Copy text** is the fallback. Shares are recorded in history, so the Topic Scout won't repeat a topic.
+
+To have the app post directly through the LinkedIn API instead, set `PUBLISH_MODE=api` and connect a LinkedIn app as described below.
+
+## Connect LinkedIn (API mode only)
 
 1. Go to <https://www.linkedin.com/developers/apps> and click **Create app**. LinkedIn requires the app to be linked to a LinkedIn Page; any page you admin works.
 2. On the **Products** tab, add **Share on LinkedIn** and **Sign In with LinkedIn using OpenID Connect**. Both are self-serve.
@@ -143,6 +149,26 @@ cd frontend && npm install && npm run dev     # terminal 2: http://localhost:518
 ```
 
 See [frontend/README.md](frontend/README.md).
+
+## Deploy (Docker, linkedin.applybuddy.net)
+
+The image holds the API and the built UI. All state (conversations, history, the voice guide) lives in the `/app/data` volume.
+
+```bash
+docker build -t linkedin-poster .
+docker run -p 127.0.0.1:8000:8000 -v lpdata:/app/data -e OPEN_CODE_KEY=... linkedin-poster
+```
+
+In production it runs on the BipPass droplet as a co-tenant (like ApplyBuddy), using `~/servers/linkedin.sh`:
+
+1. **DNS:** add an `A` record `linkedin.applybuddy.net → 165.22.176.141`, **DNS-only (grey cloud)**, so Caddy can get the certificate.
+2. `~/servers/linkedin.sh provision` creates `/srv/linkedin-poster` and a starter `.env`.
+3. `~/servers/linkedin.sh keys local` copies `OPEN_CODE_KEY` to the server. The value is never printed.
+4. `~/servers/linkedin.sh deploy` builds locally, ships the image over SSH and starts it.
+5. `~/servers/linkedin.sh expose` checks DNS, ships the BipPass Caddyfile (which contains this site's block, see `deploy/Caddyfile.snippet`) and reloads Caddy gracefully.
+6. `~/servers/linkedin.sh status`, `logs` and `backup` are the day-to-day commands.
+
+The compose file (`deploy/docker-compose.prod.yml`) joins BipPass's network as external, uses the prefixed alias `linkedin-poster`, publishes no ports and has a hard 384 MB memory limit. The site is **public with no login**: anyone with the URL can run the agents on your model quota. They can't post to LinkedIn, though, because sharing always happens in the visitor's own LinkedIn session.
 
 ## Visual debugging with LangGraph Studio
 

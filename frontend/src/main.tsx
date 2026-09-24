@@ -6,6 +6,7 @@ import { AppShell } from './layout/AppShell'
 import { ChatPage } from './pages/ChatPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ReviewPage } from './pages/ReviewPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 const router = createBrowserRouter([
   // Focused review mode: full screen, no sidebar (design: "Review draft").
@@ -17,7 +18,7 @@ const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'chat/:threadId', element: <ChatPage /> },
       { path: 'history', element: <PlaceholderPage title="History" /> },
-      { path: 'settings', element: <PlaceholderPage title="Health & settings" /> },
+      { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/chat" replace /> },
     ],
   },

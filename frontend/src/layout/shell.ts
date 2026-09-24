@@ -7,6 +7,7 @@ export interface ShellContext {
   reloadThreads: () => Promise<void>
   linkedin: LinkedInStatus | undefined
   reloadLinkedIn: () => Promise<void>
+  publishMode: 'share' | 'api'
 }
 
 export function useShell(): ShellContext {

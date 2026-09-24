@@ -9,6 +9,8 @@ export function AppShell() {
   const threads = useResource(api.threads)
   const linkedin = useResource(api.linkedin)
   const health = useResource(api.health)
+  const settings = useResource(api.settings)
+  const publishMode = settings.data?.publish_mode ?? 'share'
   const location = useLocation()
 
   // Keep the conversation list fresh as the user moves around.
@@ -22,11 +24,16 @@ export function AppShell() {
     reloadThreads: threads.reload,
     linkedin: linkedin.data,
     reloadLinkedIn: linkedin.reload,
+    publishMode,
   }
 
   return (
     <div className="flex h-full overflow-hidden">
-      <Sidebar threads={threads.data ?? []} threadsError={threads.error} linkedin={linkedin.data} />
+      <Sidebar
+        threads={threads.data ?? []}
+        threadsError={threads.error}
+        linkedin={publishMode === 'api' ? linkedin.data : undefined}
+      />
       <div className="flex min-w-0 grow flex-col">
         {health.error && <OfflineBanner onRetry={health.reload} />}
         <Outlet context={context} />

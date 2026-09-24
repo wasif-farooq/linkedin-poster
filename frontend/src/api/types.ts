@@ -4,6 +4,7 @@ export type ThreadStatus =
   | 'needs_review'
   | 'confirm_publish'
   | 'published'
+  | 'shared'
   | 'approved'
   | 'draft'
   | 'new'
@@ -75,7 +76,7 @@ export interface Critique {
 }
 
 export interface PublishResult {
-  status: 'published' | 'dry_run' | 'already_published' | 'cancelled'
+  status: 'published' | 'dry_run' | 'already_published' | 'cancelled' | 'share_ready' | 'shared'
   urn: string | null
   url: string | null
 }
@@ -157,7 +158,7 @@ export type RunEvent =
 export interface HistoryPost {
   id: number
   created_at: string
-  status: 'published' | 'dry_run'
+  status: 'published' | 'dry_run' | 'shared'
   topic: string
   text: string
   urn: string | null
@@ -188,4 +189,5 @@ export interface AppSettings {
   limits: Record<string, number>
   linkedin_version: string
   publish_dry_run: boolean
+  publish_mode: 'share' | 'api'
 }

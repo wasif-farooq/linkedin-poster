@@ -25,6 +25,7 @@ export interface ThreadRun {
   resume: (answer: ResumeAnswer, dryRun: boolean) => Promise<void>
   stop: () => void
   clearError: () => void
+  replaceThread: (thread: ThreadSnapshot) => void
 }
 
 export interface RunOutcome {
@@ -156,5 +157,6 @@ export function useThreadRun(
     resume,
     stop: () => abortRef.current?.abort(),
     clearError: () => setError(null),
+    replaceThread: setData,
   }
 }

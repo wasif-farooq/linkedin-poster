@@ -1,0 +1,43 @@
+# LinkedIn Poster on the BipPass droplet (165.22.176.141) — a co-tenant, like ApplyBuddy.
+# Shipped to /srv/linkedin-poster/docker-compose.yml by ~/servers/linkedin.sh deploy.
+#
+# The same three rules that keep ApplyBuddy from taking BipPass down:
+#   * a separate compose project, joined to BipPass's network as EXTERNAL — this file
+#     never creates or destroys that network, Caddy, or anything else of BipPass's;
+#   * a prefixed network alias (`linkedin-poster`), never a bare name like `api` that
+#     would make Caddy's `reverse_proxy api:8080` ambiguous;
+#   * a hard memory limit, so a runaway here restarts this container instead of
+#     starving the droplet (1 vCPU / ~957 MB, already shared by BipPass and ApplyBuddy).
+#
+# No ports are published: Caddy (BipPass compose) reaches it over the network and is the
+# only thing on 80/443.
+
+name: linkedin-poster
+
+services:
+  app:
+    image: linkedin-poster:latest
+    container_name: linkedin-poster
+    restart: unless-stopped
+    env_file: [.env]
+    volumes:
+      # Conversations, post history, the LinkedIn token, caches and the voice guide.
+      - lpdata:/app/data
+    deploy:
+      resources:
+        limits: { memory: 384M }
+        reservations: { memory: 96M }
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+    networks:
+      bippass:
+        aliases: [linkedin-poster]
+
+volumes:
+  lpdata:
+
+networks:
+  bippass:
+    external: true
+    name: bippass

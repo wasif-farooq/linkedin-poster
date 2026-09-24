@@ -1,0 +1,24 @@
+# ── LinkedIn Poster ───────────────────────────────────────────────────────────
+#
+# A third co-tenant on this droplet: its own compose project (`linkedin-poster`, at
+# /srv/linkedin-poster) joined to this one's network, deployed by ~/servers/linkedin.sh.
+# The block lives HERE for the same reason as ApplyBuddy's: `bippass.sh deploy` scp's
+# this file over the server's copy, so a block added only on the server would vanish.
+#
+# Upstream is the prefixed alias `linkedin-poster`, pinned in its compose file.
+#
+# ACME: linkedin.applybuddy.net must resolve to 165.22.176.141, DNS-only (grey cloud),
+# before this is deployed — `linkedin.sh expose` checks that first.
+linkedin.applybuddy.net {
+	encode zstd gzip
+
+	# Agent runs stream progress as Server-Sent Events for several minutes, and a single
+	# step (research: searches + reading pages + two LLM calls) can be silent for over a
+	# minute. Caddy flushes text/event-stream immediately; the timeouts must outlast a run.
+	reverse_proxy linkedin-poster:8000 {
+		transport http {
+			read_timeout 900s
+			write_timeout 900s
+		}
+	}
+}

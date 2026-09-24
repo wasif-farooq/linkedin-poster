@@ -175,6 +175,13 @@ def _fallback_reply(state: Mapping) -> str:
     result = state.get("publish_result") or {}
     if result.get("status") == "published":
         return f"Published to LinkedIn: {result['url']}"
+    if result.get("status") == "share_ready":
+        return (
+            "Your post is ready to share. Use “Share on LinkedIn” — it opens LinkedIn with the "
+            "post filled in, and you press Post there."
+        )
+    if result.get("status") == "shared":
+        return "Opened on LinkedIn for you to post. What would you like next?"
     if result.get("status") == "dry_run":
         return "Dry run: the post was recorded locally, not published. What would you like next?"
     if state.get("approved") and state.get("final_post"):

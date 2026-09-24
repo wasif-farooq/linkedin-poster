@@ -147,7 +147,8 @@ def test_threads_list_shows_status(client, script):
     assert threads == [{"id": "t1", "title": "Agents as config", "status": "needs_review"}]
 
 
-def test_dry_run_publish_and_flag_is_restored(client, script):
+def test_dry_run_publish_and_flag_is_restored(client, script, monkeypatch):
+    monkeypatch.setattr(get_settings(), "publish_mode", "api")
     script(decision(plan=["publisher"]), decision(reply="Dry run recorded."))
     client.post("/api/threads/t1/messages", json={"text": "post something", "dry_run": True})
     events = parse_sse(
@@ -206,3 +207,124 @@ def test_history_lists_posts(client):
         status="published", topic="T", text="x", urn="urn:li:share:1", url="https://li/1"
     )
     assert client.get("/api/history?include_dry_runs=false").json()[0]["url"] == "https://li/1"
+
+
+# --- deployment: web OAuth callback + serving the built frontend -----------------------
+
+import httpx  # noqa: E402
+import respx  # noqa: E402
+
+from app.api import server as server_module  # noqa: E402
+from app.tools.linkedin import oauth  # noqa: E402
+
+
+@pytest.fixture
+def web_oauth(monkeypatch):
+    s = get_settings()
+    monkeypatch.setattr(s, "linkedin_client_id", "cid")
+    monkeypatch.setattr(s, "linkedin_client_secret", "csecret")
+    monkeypatch.setattr(
+        s, "linkedin_redirect_uri", "https://linkedin.example.net/api/linkedin/callback"
+    )
+
+
+def _state_from(url: str) -> str:
+    from urllib.parse import parse_qs, urlsplit
+
+    return parse_qs(urlsplit(url).query)["state"][0]
+
+
+@respx.mock
+def test_web_oauth_round_trip(client, web_oauth):
+    respx.post(oauth.TOKEN_URL).mock(
+        return_value=httpx.Response(200, json={"access_token": "tok", "expires_in": 5184000})
+    )
+    respx.get("https://api.linkedin.com/v2/userinfo").mock(
+        return_value=httpx.Response(200, json={"sub": "m1", "name": "Wasif"})
+    )
+    started = client.post("/api/linkedin/connect").json()
+    assert started["authorize_url"].startswith("https://www.linkedin.com/oauth/v2/authorization?")
+    state = _state_from(started["authorize_url"])
+
+    resp = client.get(f"/api/linkedin/callback?code=abc&state={state}", follow_redirects=False)
+    assert resp.status_code == 303 and resp.headers["location"] == "/settings?linkedin=connected"
+    assert client.get("/api/linkedin").json()["name"] == "Wasif"
+
+    # a state works once
+    again = client.get(f"/api/linkedin/callback?code=abc&state={state}", follow_redirects=False)
+    assert again.headers["location"].startswith("/settings?linkedin=error")
+
+
+def test_web_oauth_rejects_forged_state_and_linkedin_errors(client, web_oauth):
+    client.post("/api/linkedin/connect")
+    forged = client.get("/api/linkedin/callback?code=abc&state=forged", follow_redirects=False)
+    assert forged.headers["location"].startswith("/settings?linkedin=error")
+    denied = client.get(
+        "/api/linkedin/callback?error=user_cancelled_authorize&error_description=The+user+cancelled",
+        follow_redirects=False,
+    )
+    assert denied.headers["location"] == "/settings?linkedin=error&reason=The%20user%20cancelled"
+
+
+def test_connect_without_app_credentials_explains(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "linkedin_client_id", "")
+    resp = client.post("/api/linkedin/connect")
+    assert resp.status_code == 400 and "LINKEDIN_CLIENT_ID" in resp.json()["detail"]
+
+
+def test_serves_built_frontend_with_spa_fallback(monkeypatch, tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>Poster</title>")
+    (dist / "assets" / "app.js").write_text("console.log(1)")
+    (dist / "favicon.svg").write_text("<svg/>")
+    (tmp_path / "secret.txt").write_text("nope")
+    monkeypatch.setattr(get_settings(), "frontend_dist", dist)
+
+    with TestClient(server_module.create_app(InMemorySaver())) as c:
+        assert "Poster" in c.get("/").text
+        assert "Poster" in c.get("/chat/abc123/review").text  # client-side route
+        assert c.get("/assets/app.js").text == "console.log(1)"
+        assert c.get("/favicon.svg").text == "<svg/>"
+        assert "nope" not in c.get("/..%2Fsecret.txt").text  # no escaping dist/
+        assert c.get("/api/does-not-exist").status_code == 404
+        assert c.get("/api/health").json()["ok"] is True
+
+
+# --- share links (default publish mode) ------------------------------------------------
+
+
+def _approved_thread(client, script, monkeypatch):
+    monkeypatch.setattr(
+        topic_scout,
+        "run",
+        lambda s: {
+            "candidates": [],
+            "topic": {"topic": "Agents as config", "source_urls": ["https://src.dev/a"]},
+        },
+    )
+    script(decision(plan=FULL_PLAN), decision(reply="Approved."))
+    client.post("/api/threads/t1/messages", json={"text": "write a post"})
+    client.post("/api/threads/t1/resume", json={"answer": {"action": "approve"}})
+
+
+def test_mark_shared_records_history_and_status(client, script, monkeypatch):
+    _approved_thread(client, script, monkeypatch)
+    snap = client.post("/api/threads/t1/shared", json={"article_url": "https://src.dev/a"}).json()
+    assert snap["status"] == "shared"
+    assert "https%3A%2F%2Fsrc.dev%2Fa" in snap["publish_result"]["url"]
+    client.post("/api/threads/t1/shared", json={})  # sharing again doesn't duplicate history
+    history = client.get("/api/history").json()
+    assert [(p["status"], p["topic"]) for p in history] == [("shared", "Agents as config")]
+    assert [t["status"] for t in client.get("/api/threads").json()] == ["shared"]
+
+
+def test_mark_shared_guards(client, script, monkeypatch):
+    assert client.post("/api/threads/t1/shared", json={}).status_code == 409  # nothing approved
+    _approved_thread(client, script, monkeypatch)
+    bad = client.post("/api/threads/t1/shared", json={"article_url": "https://evil.example/x"})
+    assert bad.status_code == 422  # only the post's own sources
+
+
+def test_settings_reports_publish_mode(client):
+    assert client.get("/api/settings").json()["publish_mode"] == "share"
