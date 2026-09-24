@@ -29,6 +29,24 @@ class TopicSelection(BaseModel):
     )
 
 
+class TopicOption(BaseModel):
+    """One story on the Scout's shortlist."""
+
+    candidate_ids: list[int] = Field(
+        min_length=1, description="IDs of the candidate(s) covering this story, best first"
+    )
+    topic: str = Field(description="Short topic title for the post")
+    angle: str = Field(description="The specific, opinionated angle the post should take")
+    why_now: str = Field(description="Why this is timely for the audience right now")
+    audience: str = Field(description="Who on LinkedIn will care about this")
+
+
+class TopicShortlist(BaseModel):
+    """What the Topic Scout LLM returns: distinct stories, best first."""
+
+    options: list[TopicOption] = Field(min_length=1, max_length=5)
+
+
 class TopicChoice(TopicSelection):
     """The selection enriched with the real source URLs (never trusted from the LLM)."""
 

@@ -10,68 +10,110 @@ from app.schemas.topic import Candidate
 CANDIDATES = [
     Candidate(title="LangGraph 1.0 released", url="https://lg.dev/1", source="Blog"),
     Candidate(title="HN on LangGraph 1.0", url="https://hn/1", source="Hacker News", points=300),
-    Candidate(title="Unrelated", url="https://x/2", source="Blog"),
+    Candidate(title="Rust in the kernel", url="https://x/2", source="Blog"),
+    Candidate(title="AGENTS.md support", url="https://x/3", source="Blog"),
 ]
 
 
-def selection(**overrides):
-    data = {
-        "chosen_ids": [1, 2],
-        "topic": "LangGraph hits 1.0",
-        "angle": "Stable APIs change the build-vs-buy math for agents.",
-        "why_now": "Released this week.",
-        "audience": "AI engineers",
-        "runner_up_ids": [3, 99, 1],
+def option(ids, topic, angle="An angle."):
+    return {
+        "candidate_ids": ids,
+        "topic": topic,
+        "angle": angle,
+        "why_now": "This week.",
+        "audience": "Engineers",
     }
-    return json.dumps(data | overrides)
+
+
+def shortlist(*options):
+    return json.dumps({"options": list(options)})
 
 
 @pytest.fixture
 def fake_llm(monkeypatch):
+    prompts: list[str] = []
+
     def install(*responses):
         llm = FakeListChatModel(responses=list(responses))
+        original = llm.invoke
+
+        def spy(messages, *a, **kw):
+            prompts.append("\n".join(m.content for m in messages))
+            return original(messages, *a, **kw)
+
+        object.__setattr__(llm, "invoke", spy)
         monkeypatch.setattr(topic_scout, "get_llm", lambda role: llm)
-        return llm
+        return prompts
 
     return install
 
 
-def test_choose_topic_uses_real_urls_and_filters_ids(fake_llm):
-    fake_llm(selection())
-    choice = topic_scout.choose_topic(CANDIDATES, niche="ai")
-    assert choice.chosen_ids == [1, 2]
-    assert choice.source_urls == ["https://lg.dev/1", "https://hn/1"]
-    assert choice.runner_up_ids == [3]  # 99 unknown, 1 already chosen
+def test_choose_topics_ranks_and_uses_real_urls(fake_llm):
+    fake_llm(
+        shortlist(
+            option([1, 2], "LangGraph hits 1.0"),
+            option([3, 99], "Rust in the kernel"),
+            option([4], "AGENTS.md"),
+        )
+    )
+    options = topic_scout.choose_topics(CANDIDATES, niche="ai")
+    assert [o.topic for o in options] == ["LangGraph hits 1.0", "Rust in the kernel", "AGENTS.md"]
+    assert options[0].source_urls == ["https://lg.dev/1", "https://hn/1"]
+    assert options[1].chosen_ids == [3]  # unknown id 99 dropped
+    assert options[0].runner_up_ids == [3, 4]
 
 
-def test_choose_topic_retries_on_unknown_ids(fake_llm):
-    fake_llm(selection(chosen_ids=[42]), selection(chosen_ids=[3]))
-    choice = topic_scout.choose_topic(CANDIDATES, niche="ai")
-    assert choice.chosen_ids == [3]
+def test_duplicate_story_and_unknown_only_options_are_dropped(fake_llm):
+    fake_llm(
+        shortlist(
+            option([1], "LangGraph"), option([1, 2], "Same story again"), option([42], "Invented")
+        )
+    )
+    assert [o.topic for o in topic_scout.choose_topics(CANDIDATES, niche="ai")] == [
+        "LangGraph",
+        "Same story again",
+    ]
+    # (option 2 keeps only its new id 2 — a different source for the same story is allowed once)
 
 
-def test_choose_topic_gives_up(fake_llm):
-    fake_llm(selection(chosen_ids=[42]), selection(chosen_ids=[43]))
+def test_retries_when_no_ids_are_valid(fake_llm):
+    fake_llm(shortlist(option([42], "Invented")), shortlist(option([3], "Rust in the kernel")))
+    assert topic_scout.choose_topic(CANDIDATES, niche="ai").topic == "Rust in the kernel"
+
+
+def test_gives_up(fake_llm):
+    fake_llm(shortlist(option([42], "x")), shortlist(option([43], "y")))
     with pytest.raises(StructuredOutputError):
-        topic_scout.choose_topic(CANDIDATES, niche="ai")
+        topic_scout.choose_topics(CANDIDATES, niche="ai")
 
 
 def test_brief_contains_context():
-    text = topic_scout._brief(CANDIDATES, "ai", "focus on OSS", ["Old topic"])
-    assert "Niche: ai" in text
-    assert "focus on OSS" in text
-    assert "Old topic" in text
+    text = topic_scout._brief(CANDIDATES, "ai", "focus on OSS", ["Old topic"], ["Shown before"])
+    assert "Niche: ai" in text and "focus on OSS" in text
+    assert (
+        "Old topic" in text
+        and "Already suggested (the author wants different ones): Shown before" in text
+    )
     assert "[2] HN on LangGraph 1.0" in text and "300 points" in text
 
 
-def test_run_node_returns_serializable_state(fake_llm, monkeypatch):
-    fake_llm(selection())
+def test_run_shortlists_by_default(fake_llm, monkeypatch):
+    prompts = fake_llm(shortlist(option([1], "LangGraph"), option([3], "Rust")))
     monkeypatch.setattr(topic_scout, "collect_candidates", lambda cfg: CANDIDATES)
-    out = topic_scout.run({"niche": "ai engineering", "recent_topics": ["x"]})
-    json.dumps(out)  # plain dicts only
-    assert out["niche"] == "ai engineering"
-    assert len(out["candidates"]) == 3
-    assert out["topic"]["topic"] == "LangGraph hits 1.0"
+    out = topic_scout.run(
+        {"niche": "ai engineering", "recent_topics": ["x"], "excluded_topics": ["Shown"]}
+    )
+    json.dumps(out)
+    assert out["topic"] is None
+    assert [o["topic"] for o in out["topic_options"]] == ["LangGraph", "Rust"]
+    assert "Shown" in prompts[0]
+
+
+def test_run_auto_topic_picks_the_best(fake_llm, monkeypatch):
+    fake_llm(shortlist(option([1], "LangGraph"), option([3], "Rust")))
+    monkeypatch.setattr(topic_scout, "collect_candidates", lambda cfg: CANDIDATES)
+    out = topic_scout.run({"niche": "ai", "recent_topics": ["x"], "auto_topic": True})
+    assert out["topic"]["topic"] == "LangGraph" and out["topic_options"] is None
 
 
 def test_run_node_without_candidates(monkeypatch):

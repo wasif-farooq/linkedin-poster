@@ -4,7 +4,8 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
 WORKERS = ("topic_scout", "researcher", "writer", "critic", "publisher")  # wrapped agents
-STEPS = (*WORKERS, "human_review")  # everything the dispatcher can route to
+HUMAN_STEPS = ("topic_pick", "human_review")  # pause for the user via interrupt()
+STEPS = (*WORKERS, *HUMAN_STEPS)  # everything the dispatcher can route to
 
 
 class PostState(TypedDict, total=False):
@@ -14,6 +15,9 @@ class PostState(TypedDict, total=False):
     # Work products (plain dicts so checkpoints stay JSON-friendly)
     niche: str
     candidates: list[dict[str, Any]]
+    auto_topic: bool  # True: the Scout picks; False: the user picks from topic_options
+    topic_options: list[dict[str, Any]] | None
+    excluded_topics: list[str]  # shortlisted and passed over ("find more")
     topic: dict[str, Any] | str | None
     research_brief: dict[str, Any] | None
     draft: dict[str, Any] | None

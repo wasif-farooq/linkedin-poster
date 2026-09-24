@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { api } from '../api/client'
-import type { ChatMessage, PublishConfirmPayload, ThreadSnapshot } from '../api/types'
+import type {
+  ChatMessage,
+  PublishConfirmPayload,
+  ThreadSnapshot,
+  TopicChoicePayload,
+  TopicPickAnswer,
+} from '../api/types'
 import { Composer } from '../components/Composer'
 import { DraftPanel } from '../components/DraftPanel'
 import { PublishDialog } from '../components/PublishDialog'
 import { RunCard } from '../components/RunCard'
 import { StatusPill } from '../components/StatusPill'
 import { Toast } from '../components/Toast'
-import { useDryRun } from '../hooks/useLocalStorage'
+import { TopicPicker } from '../components/TopicPicker'
+import { useAutoTopic, useDryRun } from '../hooks/useLocalStorage'
 import { useThreadRun, type ThreadRun } from '../hooks/useThreadRun'
 import { useShell } from '../layout/shell'
 import { formatTokens } from '../lib/post'
@@ -75,6 +82,7 @@ function Conversation({ threadId }: { threadId: string }) {
     }
   })
   const [dryRun, setDryRun] = useDryRun()
+  const [autoTopic, setAutoTopic] = useAutoTopic()
   const [publishDismissed, setPublishDismissed] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -87,12 +95,12 @@ function Conversation({ threadId }: { threadId: string }) {
     if (!initialMessage || initialSent.current || !thread) return
     initialSent.current = true
     navigate(location.pathname, { replace: true, state: null })
-    void run.send(initialMessage, dryRun)
-  }, [initialMessage, thread, navigate, location.pathname, run, dryRun])
+    void run.send(initialMessage, { dryRun, autoTopic })
+  }, [initialMessage, thread, navigate, location.pathname, run, dryRun, autoTopic])
 
   const sendText = (text: string) => {
     setPublishDismissed(false)
-    void run.send(text, dryRun)
+    void run.send(text, { dryRun, autoTopic })
   }
 
   if (run.loadError) {
@@ -116,18 +124,36 @@ function Conversation({ threadId }: { threadId: string }) {
               </span>
             )}
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2.5 text-[13px] text-ink-2">
-            <input
-              type="checkbox"
-              checked={dryRun}
-              onChange={(e) => setDryRun(e.target.checked)}
-              className="size-4.5 accent-accent"
-            />
-            Dry run
-          </label>
+          <div className="flex shrink-0 items-center gap-5">
+            <label
+              className="flex cursor-pointer items-center gap-2.5 text-[13px] text-ink-2"
+              title="On: the Topic Scout picks the best topic. Off: you choose from its shortlist."
+            >
+              <input
+                type="checkbox"
+                checked={autoTopic}
+                onChange={(e) => setAutoTopic(e.target.checked)}
+                className="size-4.5 accent-accent"
+              />
+              Auto-pick topic
+            </label>
+            <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-ink-2">
+              <input
+                type="checkbox"
+                checked={dryRun}
+                onChange={(e) => setDryRun(e.target.checked)}
+                className="size-4.5 accent-accent"
+              />
+              Dry run
+            </label>
+          </div>
         </header>
 
-        <Transcript thread={thread} run={run} />
+        <Transcript
+          thread={thread}
+          run={run}
+          onPickTopic={(answer) => void run.resume(answer, dryRun)}
+        />
 
         <div className="flex flex-col gap-2.5 px-7 pb-5">
           {run.error && (
@@ -198,7 +224,15 @@ function Conversation({ threadId }: { threadId: string }) {
 }
 
 /** Messages, with the agent checklist placed after the user message that started the work. */
-function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun }) {
+function Transcript({
+  thread,
+  run,
+  onPickTopic,
+}: {
+  thread: ThreadSnapshot
+  run: ThreadRun
+  onPickTopic: (answer: TopicPickAnswer) => void
+}) {
   const bottom = useRef<HTMLDivElement>(null)
   const { live, pendingText } = run
   const messages: ChatMessage[] = pendingText
@@ -207,7 +241,7 @@ function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun })
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, live?.lines.length, live?.current])
+  }, [messages.length, live?.lines.length, live?.current, thread.pending?.type])
 
   const lastUser = messages.map((m) => m.role).lastIndexOf('user')
   const pending = thread.pending
@@ -223,7 +257,11 @@ function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun })
     <RunCard
       lines={thread.activity}
       running={false}
-      waitingFor={pending ? (pending.type === 'review' ? 'review' : 'publish') : null}
+      waitingFor={
+        pending
+          ? ({ topic_choice: 'topic', review: 'review', publish_confirm: 'publish' } as const)[pending.type]
+          : null
+      }
       reviewHref={`/chat/${thread.id}/review`}
     />
   ) : null
@@ -240,6 +278,10 @@ function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun })
         </div>
       ))}
       {lastUser === -1 && card}
+      {/* Hidden once answered: the live checklist above takes over while the run continues. */}
+      {pending?.type === 'topic_choice' && !live && (
+        <TopicPicker payload={pending as TopicChoicePayload} busy={run.running} onAnswer={onPickTopic} />
+      )}
       {!live && messages.length > 0 && messages[messages.length - 1].role === 'user' && !thread.pending && (
         <p role="status" className="m-0 max-w-160 rounded-[10px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-2">
           This turn was interrupted before the Manager replied (stopped, or the page was reloaded mid-run). Your work

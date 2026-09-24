@@ -109,6 +109,9 @@ def summarize_state(state: Mapping) -> str:
             lines.append(
                 "  Runner-ups: " + "; ".join(f"#{i} {candidates[i - 1]['title']}" for i in runners)
             )
+    elif state.get("topic_options"):
+        titles = "; ".join(f"{i + 1}. {o['topic']}" for i, o in enumerate(state["topic_options"]))
+        lines.append(f"Topic: the user is choosing from the Scout's shortlist: {titles}")
     else:
         lines.append("Topic: none yet")
 

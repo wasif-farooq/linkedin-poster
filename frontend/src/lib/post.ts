@@ -29,6 +29,7 @@ export function foldPost(text: string): [before: string, after: string] {
 
 export type AgentKey =
   | 'topic_scout'
+  | 'topic_pick'
   | 'researcher'
   | 'writer'
   | 'critic'
@@ -37,6 +38,7 @@ export type AgentKey =
 
 export const AGENT_LABELS: Record<AgentKey, string> = {
   topic_scout: 'Topic Scout',
+  topic_pick: 'Your pick',
   researcher: 'Researcher',
   writer: 'Writer',
   critic: 'Critic',

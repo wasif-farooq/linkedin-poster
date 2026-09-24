@@ -83,13 +83,13 @@ export const api = {
   sendMessage: (
     id: string,
     text: string,
-    dryRun: boolean,
+    options: { dryRun: boolean; autoTopic: boolean },
     onEvent: (e: RunEvent) => void,
     signal?: AbortSignal,
   ) =>
     stream(
       `/api/threads/${encodeURIComponent(id)}/messages`,
-      { text, dry_run: dryRun },
+      { text, dry_run: options.dryRun, auto_topic: options.autoTopic },
       onEvent,
       signal,
     ),

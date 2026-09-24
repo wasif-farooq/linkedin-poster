@@ -14,10 +14,12 @@ def config_for(thread_id: str) -> dict:
 
 
 def thread_status(snapshot) -> str:
-    """needs_review | confirm_publish | published | shared | approved | draft | new."""
+    """choose_topic | needs_review | confirm_publish | published | shared | approved | draft | new."""
     if snapshot.interrupts:
-        payload = snapshot.interrupts[0].value or {}
-        return "confirm_publish" if payload.get("type") == "publish_confirm" else "needs_review"
+        kind = (snapshot.interrupts[0].value or {}).get("type")
+        return {"publish_confirm": "confirm_publish", "topic_choice": "choose_topic"}.get(
+            kind, "needs_review"
+        )
     values = snapshot.values or {}
     result_status = (values.get("publish_result") or {}).get("status")
     if result_status in ("published", "shared"):
@@ -35,6 +37,8 @@ def thread_title(values: dict) -> str:
         return topic
     if isinstance(topic, dict) and topic.get("topic"):
         return topic["topic"]
+    if values.get("topic_options"):
+        return "Choosing a topic"
     for message in values.get("messages") or []:
         if isinstance(message, HumanMessage):
             return str(message.content)[:80]
@@ -78,6 +82,7 @@ def thread_snapshot(graph, thread_id: str) -> dict[str, Any]:
         "niche": values.get("niche"),
         "messages": _messages(values.get("messages") or []),
         "topic": {"topic": topic} if isinstance(topic, str) else topic,
+        "auto_topic": bool(values.get("auto_topic")),
         "research_brief": values.get("research_brief"),
         "draft": draft,
         "critique": values.get("critique"),

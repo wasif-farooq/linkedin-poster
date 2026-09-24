@@ -63,6 +63,8 @@ class NewThread(BaseModel):
 class SendMessage(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     dry_run: bool = False
+    # True: the Topic Scout picks; False: the user picks from a shortlist; None: keep as is.
+    auto_topic: bool | None = None
 
 
 class ResumeRun(BaseModel):
@@ -285,13 +287,17 @@ def create_app(checkpointer=None) -> FastAPI:
     def send_message(body: SendMessage, thread_id: str = ThreadId) -> StreamingResponse:
         r = _require_idle(runner())
         graph_input = new_turn(HumanMessage(content=body.text.strip()))
+        if body.auto_topic is not None:
+            graph_input["auto_topic"] = body.auto_topic
         return _stream(r.events(thread_id, graph_input, body.dry_run))
 
     @app.post("/api/threads/{thread_id}/resume")
     def resume(body: ResumeRun, thread_id: str = ThreadId) -> StreamingResponse:
         r = _require_idle(runner())
-        if not r.graph.get_state(config_for(thread_id)).interrupts:
+        interrupts = r.graph.get_state(config_for(thread_id)).interrupts
+        if not interrupts:
             raise HTTPException(409, "Nothing is waiting for a decision in this conversation.")
+        _validate_answer((interrupts[0].value or {}).get("type"), body.answer)
         return _stream(r.events(thread_id, Command(resume=body.answer), body.dry_run))
 
     @app.post("/api/threads/{thread_id}/shared")
@@ -427,6 +433,24 @@ def _mount_frontend(app: FastAPI, dist: FilePath) -> None:
         if path and candidate.is_file() and candidate.is_relative_to(root):
             return FileResponse(candidate)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+def _validate_answer(kind: str | None, answer: dict) -> None:
+    """Reject an answer that doesn't fit the pending question (422) instead of resuming with it."""
+    from pydantic import ValidationError
+
+    from app.schemas.review import ReviewAction, TopicPickAnswer
+
+    try:
+        if kind == "topic_choice":
+            TopicPickAnswer.model_validate(answer)
+        elif kind == "publish_confirm":
+            if not isinstance(answer.get("confirm"), bool):
+                raise ValueError("expected {'confirm': true|false}")
+        else:
+            ReviewAction.model_validate(answer)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(422, f"Invalid answer for this {kind or 'review'}: {exc}") from exc
 
 
 def _source_urls(values: dict) -> list[str]:

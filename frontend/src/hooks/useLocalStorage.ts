@@ -27,3 +27,8 @@ export function useLocalStorage<T>(key: string, initial: T): [T, (value: T) => v
 export function useDryRun(): [boolean, (value: boolean) => void] {
   return useLocalStorage('poster.dryRun', false)
 }
+
+/** Off by default: the user picks from the Topic Scout's shortlist. */
+export function useAutoTopic(): [boolean, (value: boolean) => void] {
+  return useLocalStorage('poster.autoTopic', false)
+}

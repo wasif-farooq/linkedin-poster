@@ -21,7 +21,7 @@ export interface ThreadRun {
   pendingText: string | null // the user's message while its turn runs
   error: string | null
   usage: Usage | null
-  send: (text: string, dryRun: boolean) => Promise<void>
+  send: (text: string, options: { dryRun: boolean; autoTopic: boolean }) => Promise<void>
   resume: (answer: ResumeAnswer, dryRun: boolean) => Promise<void>
   stop: () => void
   clearError: () => void
@@ -130,10 +130,10 @@ export function useThreadRun(
   )
 
   const send = useCallback(
-    async (text: string, dryRun: boolean) => {
+    async (text: string, options: { dryRun: boolean; autoTopic: boolean }) => {
       setPendingText(text)
       await execute('message', (onEvent, signal) =>
-        api.sendMessage(threadId, text, dryRun, onEvent, signal),
+        api.sendMessage(threadId, text, options, onEvent, signal),
       )
     },
     [execute, threadId],

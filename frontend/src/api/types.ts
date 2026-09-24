@@ -1,6 +1,7 @@
 // Mirrors the Python API (app/api/server.py, app/services/threads.py).
 
 export type ThreadStatus =
+  | 'choose_topic'
   | 'needs_review'
   | 'confirm_publish'
   | 'published'
@@ -99,13 +100,29 @@ export interface PublishConfirmPayload {
   account: string
 }
 
-export type PendingDecision = ReviewPayload | PublishConfirmPayload
+export interface TopicOptionView {
+  id: number
+  topic: string
+  angle: string
+  why_now: string
+  audience: string
+  sources: { title: string; url: string }[]
+}
+
+export interface TopicChoicePayload {
+  type: 'topic_choice'
+  options: TopicOptionView[]
+  round: number
+}
+
+export type PendingDecision = ReviewPayload | PublishConfirmPayload | TopicChoicePayload
 
 export interface ThreadSnapshot {
   id: string
   title: string
   status: ThreadStatus
   niche: string | null
+  auto_topic: boolean
   messages: ChatMessage[]
   topic: Topic | null
   research_brief: ResearchBrief | null
@@ -135,7 +152,13 @@ export type ReviewAnswer =
   | { action: 'edit'; text: string }
   | { action: 'revise'; text: string }
 
-export type ResumeAnswer = ReviewAnswer | { confirm: boolean }
+export type TopicPickAnswer =
+  | { choice: number }
+  | { more: true; hint?: string | null }
+  | { topic: string }
+  | { cancel: true }
+
+export type ResumeAnswer = ReviewAnswer | { confirm: boolean } | TopicPickAnswer
 
 // Server-Sent Events emitted by a run.
 export type RunEvent =

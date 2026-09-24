@@ -328,3 +328,18 @@ def test_mark_shared_guards(client, script, monkeypatch):
 
 def test_settings_reports_publish_mode(client):
     assert client.get("/api/settings").json()["publish_mode"] == "share"
+
+
+def test_resume_rejects_answers_that_dont_fit_the_question(client, script):
+    script(decision(plan=FULL_PLAN), decision(reply="ok"))
+    client.post("/api/threads/t1/messages", json={"text": "write a post", "auto_topic": True})
+    # pending: the draft review
+    assert client.post("/api/threads/t1/resume", json={"answer": {"choice": 1}}).status_code == 422
+    assert (
+        client.post("/api/threads/t1/resume", json={"answer": {"action": "revise"}}).status_code
+        == 422
+    )
+    assert (
+        client.post("/api/threads/t1/resume", json={"answer": {"action": "approve"}}).status_code
+        == 200
+    )

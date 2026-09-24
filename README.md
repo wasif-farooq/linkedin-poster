@@ -59,6 +59,13 @@ uv run linkedin-poster doctor                     # check model, feeds, search, 
 
 In the chat, `/draft` shows the current draft and `/quit` exits. Ctrl+C cancels the current turn but keeps the conversation.
 
+**Picking a topic:** by default the Topic Scout shows you a **shortlist of up to 5 topics**, each with its angle, why it matters now, and sources. You can:
+- choose one
+- ask for **different topics**, optionally with a direction like "something about open source"
+- **write your own**
+
+Turn on **Auto-pick topic** (in the web UI header, or `chat --auto-topic` in the CLI) to have the Scout pick the best one itself.
+
 **Reviewing a draft:** each new draft pauses for you once the Critic has scored it.
 
 | Key | Action |

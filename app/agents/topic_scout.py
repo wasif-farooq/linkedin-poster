@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.structured import StructuredOutputError, invoke_structured
-from app.schemas.topic import Candidate, TopicChoice, TopicSelection
+from app.schemas.topic import Candidate, TopicChoice, TopicOption, TopicShortlist
 from app.tools.sources.candidates import collect_candidates
 from app.tools.sources.niches import load_niche
 
@@ -24,22 +24,25 @@ class NoCandidatesError(RuntimeError):
 
 
 def run(state: Mapping) -> dict:
-    """Graph node. Reads `niche`, `instructions`, `recent_topics`; writes `candidates`, `topic`."""
+    """Graph node. Shortlists topics; with `auto_topic` it also picks the best one.
+
+    Without auto-pick it returns `topic_options` and no topic: the human picks in the
+    `topic_pick` step (a separate node, so answering doesn't re-run this LLM call)."""
     niche = state.get("niche") or DEFAULT_NICHE
     candidates = collect_candidates(load_niche(niche))
     if not candidates:
         raise NoCandidatesError(f"No recent candidates found for niche '{niche}'.")
-    choice = choose_topic(
+    options = choose_topics(
         candidates,
         niche=niche,
         instructions=state.get("instructions") or "",
         recent_topics=state.get("recent_topics") or _published_topics(),
+        excluded=state.get("excluded_topics") or [],
     )
-    return {
-        "niche": niche,
-        "candidates": [c.model_dump() for c in candidates],
-        "topic": choice.model_dump(),
-    }
+    update = {"niche": niche, "candidates": [c.model_dump() for c in candidates]}
+    if state.get("auto_topic"):
+        return update | {"topic": options[0].model_dump(), "topic_options": None}
+    return update | {"topic": None, "topic_options": [o.model_dump() for o in options]}
 
 
 def _published_topics() -> list[str]:
@@ -53,45 +56,65 @@ def _published_topics() -> list[str]:
         return []
 
 
-def choose_topic(
+def choose_topic(candidates: list[Candidate], **kwargs) -> TopicChoice:
+    """The single best topic (auto-pick)."""
+    return choose_topics(candidates, **kwargs)[0]
+
+
+def choose_topics(
     candidates: list[Candidate],
     *,
     niche: str,
     instructions: str = "",
     recent_topics: list[str] | None = None,
+    excluded: list[str] | None = None,
     attempts: int = 2,
-) -> TopicChoice:
+) -> list[TopicChoice]:
+    """A ranked shortlist of distinct topics. Source URLs come from the candidates,
+    never from the LLM."""
     llm = get_llm(ROLE)
     messages = [
         SystemMessage(content=load_prompt(ROLE)),
-        HumanMessage(content=_brief(candidates, niche, instructions, recent_topics or [])),
+        HumanMessage(
+            content=_brief(candidates, niche, instructions, recent_topics or [], excluded or [])
+        ),
     ]
     by_id = {i: c for i, c in enumerate(candidates, start=1)}
 
     for _ in range(attempts):
-        selection = invoke_structured(llm, TopicSelection, messages)
-        chosen = [i for i in selection.chosen_ids if i in by_id]
-        if chosen:
-            runners = [i for i in selection.runner_up_ids if i in by_id and i not in chosen][:3]
-            return TopicChoice(
-                **selection.model_dump(exclude={"chosen_ids", "runner_up_ids"}),
-                chosen_ids=chosen,
-                runner_up_ids=runners,
-                source_urls=[by_id[i].url for i in chosen],
-                source_titles=[by_id[i].title for i in chosen],
-            )
-        log.debug("Scout returned unknown ids %s, retrying", selection.chosen_ids)
+        shortlist = invoke_structured(llm, TopicShortlist, messages)
+        options: list[tuple[list[int], TopicOption]] = []
+        used: set[int] = set()
+        for option in shortlist.options:
+            ids = [i for i in option.candidate_ids if i in by_id and i not in used]
+            if ids:  # unknown ids dropped; a story already covered by an earlier option skipped
+                used.update(ids)
+                options.append((ids, option))
+        if options:
+            firsts = [ids[0] for ids, _ in options]
+            return [
+                TopicChoice(
+                    **option.model_dump(exclude={"candidate_ids"}),
+                    chosen_ids=ids,
+                    runner_up_ids=[f for f in firsts if f != ids[0]][:3],
+                    source_urls=[by_id[i].url for i in ids],
+                    source_titles=[by_id[i].title for i in ids],
+                )
+                for ids, option in options
+            ]
+        log.debug("Scout returned no usable candidate ids, retrying")
         messages.append(
-            HumanMessage(
-                content=f"IDs {selection.chosen_ids} are not in the list. "
-                f"Use only IDs between 1 and {len(candidates)}."
-            )
+            HumanMessage(content=f"Use only candidate IDs between 1 and {len(candidates)}.")
         )
     raise StructuredOutputError("Topic Scout did not return any valid candidate IDs.")
 
 
 def _brief(
-    candidates: list[Candidate], niche: str, instructions: str, recent_topics: list[str]
+    candidates: list[Candidate],
+    niche: str,
+    instructions: str,
+    recent_topics: list[str],
+    excluded: list[str] | None = None,
 ) -> str:
     lines = [
         f"Today: {date.today().isoformat()}",
@@ -99,6 +122,8 @@ def _brief(
         f"Extra instructions from the manager: {instructions or 'none'}",
         "Recently posted (avoid repeating): "
         + ("; ".join(recent_topics) if recent_topics else "none"),
+        "Already suggested (the author wants different ones): "
+        + ("; ".join(excluded) if excluded else "none"),
         "",
         "Candidates:",
     ]

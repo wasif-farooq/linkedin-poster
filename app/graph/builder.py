@@ -15,7 +15,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.agents.manager import TOPIC_RESET
 from app.graph.routing import after_critic, dispatch, route_after_dispatch, route_after_manager
-from app.graph.state import STEPS, TURN_RESET, WORKERS, PostState
+from app.graph.state import HUMAN_STEPS, STEPS, TURN_RESET, WORKERS, PostState
 from app.llm.client import MissingAPIKeyError
 from app.llm.usage import LLMBudgetExceededError
 
@@ -42,8 +42,9 @@ def build_graph(checkpointer=None):
     for name in WORKERS:
         graph.add_node(name, _worker(name))
         graph.add_edge(name, "dispatch")
-    graph.add_node("human_review", _review_node())
-    graph.add_edge("human_review", "dispatch")
+    for name in HUMAN_STEPS:
+        graph.add_node(name, _human_node(name))
+        graph.add_edge(name, "dispatch")
 
     graph.add_edge(START, "begin_turn")
     graph.add_edge("begin_turn", "manager")
@@ -95,6 +96,9 @@ def _worker(name: str) -> Callable[[Mapping], dict]:
         update = dict(update)
         if name == "topic_scout":
             update = TOPIC_RESET | update  # new topic: old brief/draft no longer apply
+            if update.get("topic") is None and update.get("topic_options"):
+                # Shortlisted rather than picked: the user chooses before anything else runs.
+                update["plan"] = ["topic_pick", *(state.get("plan") or [])]
         elif name == "researcher":
             update.setdefault("critique", None)
         elif name == "writer":
@@ -120,12 +124,12 @@ def _worker(name: str) -> Callable[[Mapping], dict]:
     return node
 
 
-def _review_node() -> Callable[[Mapping], dict]:
-    """human_review manages its own activity lines; errors other than the interrupt
-    (e.g. no draft) are reported to the Manager like any worker failure."""
-    run = _call("human_review")
+def _human_node(name: str) -> Callable[[Mapping], dict]:
+    """Steps that pause for the user manage their own activity lines; errors other than the
+    interrupt (e.g. nothing to review) are reported to the Manager like a worker failure."""
+    run = _call(name)
 
-    def human_review(state: Mapping) -> dict:
+    def human_node(state: Mapping) -> dict:
         steps = (state.get("step_count") or 0) + 1
         try:
             return run(state) | {"step_count": steps}
@@ -135,17 +139,20 @@ def _review_node() -> Callable[[Mapping], dict]:
             return {
                 "step_count": steps,
                 "plan": [],
-                "last_error": f"human_review failed: {exc}",
-                "activity": [*(state.get("activity") or []), "human_review: FAILED"],
+                "last_error": f"{name} failed: {exc}",
+                "activity": [*(state.get("activity") or []), f"{name}: FAILED"],
             }
 
-    return human_review
+    human_node.__name__ = name
+    return human_node
 
 
 def describe(name: str, update: Mapping, state: Mapping) -> str:
     """One-line summary of what a worker did (shown in the CLI and to the Manager)."""
     if name == "topic_scout":
-        return f"topic_scout: picked '{update['topic']['topic']}'"
+        if update.get("topic"):
+            return f"topic_scout: picked '{update['topic']['topic']}'"
+        return f"topic_scout: shortlisted {len(update.get('topic_options') or [])} topics"
     if name == "researcher":
         brief = update["research_brief"]
         return (

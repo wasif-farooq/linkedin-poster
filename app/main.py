@@ -120,9 +120,12 @@ def dev_scout(
 
     with llm_session():
         start = time.perf_counter()
-        with console.status("Topic Scout is choosing..."):
-            choice = topic_scout.choose_topic(candidates, niche=niche, instructions=instructions)
-        _print_topic(choice, time.perf_counter() - start)
+        with console.status("Topic Scout is shortlisting..."):
+            options = topic_scout.choose_topics(candidates, niche=niche, instructions=instructions)
+        elapsed = time.perf_counter() - start
+        for rank, option in enumerate(options, start=1):
+            _print_topic(option, elapsed, rank=rank)
+        choice = options[0]
         if research:
             _run_research(choice.topic, choice.angle, choice.source_urls, instructions)
 
@@ -230,6 +233,9 @@ def chat(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Record 'published' posts locally instead of posting."
     ),
+    auto_topic: bool = typer.Option(
+        False, "--auto-topic", help="Let the Topic Scout pick instead of showing you a shortlist."
+    ),
 ):
     """Chat with the Manager, who runs the Scout, Researcher, Writer and Critic for you."""
     import uuid
@@ -265,7 +271,7 @@ def chat(
             if text == "/help":
                 _chat_help()
                 continue
-            _chat_turn(graph, config, text)
+            _chat_turn(graph, config, text, auto_topic)
     console.print(f"[dim]Resume with: linkedin-poster chat --thread {thread}[/dim]")
 
 
@@ -290,7 +296,7 @@ def serve(
 @app.command()
 def resume(thread: str = typer.Option(..., "--thread", "-t", help="Conversation ID.")):
     """Continue a conversation, starting with any review that's waiting for you."""
-    chat(thread=thread, niche=None, dry_run=False)
+    chat(thread=thread, niche=None, dry_run=False, auto_topic=False)
 
 
 @app.command()
@@ -433,6 +439,7 @@ def _chat_help() -> None:
 
 AGENT_LABELS = {
     "topic_scout": "🔎 Topic Scout",
+    "topic_pick": "👤 Your pick",
     "researcher": "📚 Researcher",
     "writer": "✍️  Writer",
     "critic": "🧐 Critic",
@@ -441,7 +448,7 @@ AGENT_LABELS = {
 }
 
 
-def _chat_turn(graph, config, text: str) -> None:
+def _chat_turn(graph, config, text: str, auto_topic: bool = False) -> None:
     from langchain_core.messages import HumanMessage
 
     from app.graph.state import new_turn
@@ -449,7 +456,9 @@ def _chat_turn(graph, config, text: str) -> None:
     before = graph.get_state(config).values
     shown = {"activity": 0, "draft_reviewed": False}
     try:
-        _run_graph(graph, config, new_turn(HumanMessage(content=text)), shown)
+        _run_graph(
+            graph, config, new_turn(HumanMessage(content=text)) | {"auto_topic": auto_topic}, shown
+        )
         _handle_reviews(graph, config, shown)
     except KeyboardInterrupt:
         console.print(
@@ -490,6 +499,8 @@ def _handle_reviews(graph, config, shown: dict | None = None) -> None:
         payload = interrupts[0].value
         if payload.get("type") == "publish_confirm":
             answer = _ask_publish(payload)
+        elif payload.get("type") == "topic_choice":
+            answer = _ask_topic(payload)
         else:
             answer = _ask_review(payload)
         if answer is None:
@@ -548,6 +559,42 @@ def _ask_review(payload: dict) -> dict | None:
                 return {"action": "revise", "text": feedback}
         elif choice in ("x", "reject"):
             return {"action": "reject"}
+        elif choice in ("l", "later"):
+            return None
+
+
+def _ask_topic(payload: dict) -> dict | None:
+    """Show the Scout's shortlist; returns a TopicPickAnswer dict, or None for 'later'."""
+    from rich.table import Table
+
+    table = Table(title="Pick a topic", show_lines=True)
+    table.add_column("#", justify="right")
+    table.add_column("Topic & angle", overflow="fold")
+    table.add_column("Why now", overflow="fold")
+    for o in payload["options"]:
+        table.add_row(
+            str(o["id"] + 1),
+            f"[bold]{escape(o['topic'])}[/bold]\n[dim]{escape(o['angle'])}[/dim]",
+            escape(o["why_now"]),
+        )
+    console.print(table)
+    count = len(payload["options"])
+    prompt = escape(f"[1-{count}] pick  [m]ore topics  [t]ype your own  [l]ater> ")
+    while True:
+        try:
+            choice = console.input(f"[bold magenta]{prompt}[/bold magenta]").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            console.print()
+            return None
+        if choice.isdigit() and 1 <= int(choice) <= count:
+            return {"choice": int(choice) - 1}
+        if choice in ("m", "more"):
+            hint = console.input("Any direction? (optional, Enter to skip) ").strip()
+            return {"more": True, "hint": hint or None}
+        if choice in ("t", "type"):
+            topic = console.input("Your topic: ").strip()
+            if topic:
+                return {"topic": topic}
         elif choice in ("l", "later"):
             return None
 
@@ -731,7 +778,7 @@ def _print_brief(brief, elapsed: float) -> None:
     console.print(table)
 
 
-def _print_topic(choice, elapsed: float) -> None:
+def _print_topic(choice, elapsed: float, rank: int = 1) -> None:
     body = (
         f"[bold]{escape(choice.topic)}[/bold]\n\n"
         f"[cyan]Angle:[/cyan] {escape(choice.angle)}\n"
@@ -744,7 +791,8 @@ def _print_topic(choice, elapsed: float) -> None:
         )
         + f"\n[cyan]Runner-ups:[/cyan] {', '.join(f'#{i}' for i in choice.runner_up_ids) or '-'}"
     )
-    console.print(Panel(body, title=f"Chosen topic ({elapsed:.1f}s)", border_style="green"))
+    title = f"#{rank} — best pick ({elapsed:.1f}s)" if rank == 1 else f"#{rank}"
+    console.print(Panel(body, title=title, border_style="green" if rank == 1 else "blue"))
 
 
 def _print_candidates(candidates) -> None:

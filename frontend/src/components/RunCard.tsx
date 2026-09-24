@@ -9,7 +9,7 @@ interface RunCardProps {
   current?: string | null // agent working now, or "manager"
   running: boolean
   startedAt?: number
-  waitingFor?: 'review' | 'publish' | null
+  waitingFor?: 'topic' | 'review' | 'publish' | null
   reviewHref?: string
 }
 
@@ -92,14 +92,16 @@ export function RunCard({
             <Badge tone="waiting" />
             <span className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">
-                {waitingFor === 'review' ? 'Your review' : 'Publish confirmation'}
+                {{ topic: 'Your pick', review: 'Your review', publish: 'Publish confirmation' }[waitingFor]}
               </span>
               {waitingFor === 'review' && reviewHref ? (
                 <Link to={reviewHref} className="text-[13px] font-medium text-review">
                   Waiting for you — review the draft
                 </Link>
               ) : (
-                <span className="text-[13px] text-review">Waiting for you</span>
+                <span className="text-[13px] text-review">
+                  {waitingFor === 'topic' ? 'Waiting for you — choose a topic below' : 'Waiting for you'}
+                </span>
               )}
             </span>
           </li>

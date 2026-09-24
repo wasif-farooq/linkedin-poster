@@ -156,6 +156,17 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Committed in their repos: Caddy block → bippass-backend `eecc1f1`, `linkedin.sh` → servers `728ce4a` (not pushed)
 - [ ] ✅ Tested by user
 
+## Change request — pick the topic yourself
+- [x] Topic Scout returns a ranked **shortlist** (up to 5 distinct stories, each with angle / why now / sources) in one LLM call; auto mode takes the first
+- [x] New human step `topic_pick` (interrupt): choose · show different topics (+ optional direction; already-shown topics excluded) · write your own · cancel. Separate node so answering never re-runs the Scout's LLM call
+- [x] **Auto-pick topic** toggle: web header (remembered, off by default) and `chat --auto-topic`; `auto_topic` on the API message body
+- [x] Malformed answers re-ask instead of failing; the API rejects answers that don't fit the pending question (422)
+- [x] UI: `TopicPicker` cards in the chat, "Pick a topic" status; CLI numbered picker; `dev scout` prints the whole shortlist
+- [x] Tests: Scout shortlist (7), pick flow e2e (5), API answer validation (184 backend total, 12 frontend)
+- [x] Live: real model shortlisted 5 distinct topics; picked #5 in the browser → research → write → critic pass → review
+- [ ] Deploy to linkedin.applybuddy.net (`~/servers/linkedin.sh deploy`) — after you've tried it
+- [ ] ✅ Tested by user
+
 ---
 
 ## Notes / Decisions

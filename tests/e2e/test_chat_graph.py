@@ -82,9 +82,12 @@ def world(monkeypatch):
 
     graph = build_graph(InMemorySaver())
 
-    def say(text, *reviews):
+    def say(text, *reviews, auto_topic=None):
         """Send a chat message; answer each review pause with the next of `reviews`."""
-        graph.invoke(new_turn(HumanMessage(content=text)), CONFIG)
+        turn = new_turn(HumanMessage(content=text))
+        if auto_topic is not None:
+            turn["auto_topic"] = auto_topic
+        graph.invoke(turn, CONFIG)
         answers = list(reviews)
         while graph.get_state(CONFIG).interrupts and answers:
             graph.invoke(Command(resume=answers.pop(0)), CONFIG)
@@ -490,3 +493,111 @@ def test_share_mode_prepares_link_without_confirmation(world):
     assert world["pending"]() is None  # LinkedIn's own Post button is the confirmation
     assert PostRepository().list() == []  # recorded only when the link is actually used
     assert "Share on LinkedIn" in state["messages"][-1].content
+
+
+# --- topic shortlist: the user picks (auto-pick off) -----------------------------------
+
+OPTIONS = [
+    {
+        "topic": "LangGraph hits 1.0",
+        "angle": "a",
+        "why_now": "w",
+        "audience": "x",
+        "chosen_ids": [1],
+        "runner_up_ids": [],
+        "source_urls": ["https://lg.dev"],
+        "source_titles": ["LG"],
+    },
+    {
+        "topic": "Rust in the kernel",
+        "angle": "b",
+        "why_now": "w",
+        "audience": "x",
+        "chosen_ids": [2],
+        "runner_up_ids": [],
+        "source_urls": ["https://rust.dev"],
+        "source_titles": ["Rust"],
+    },
+]
+
+
+@pytest.fixture
+def shortlisting(world, monkeypatch):
+    """A Scout that shortlists (like the real one without auto_topic); records what it saw."""
+    seen: list[dict] = []
+
+    def scout(state):
+        world["calls"].append("topic_scout")
+        seen.append(
+            {
+                "excluded": list(state.get("excluded_topics") or []),
+                "instructions": state.get("instructions"),
+            }
+        )
+        if state.get("auto_topic"):
+            return {"candidates": [], "topic": OPTIONS[0], "topic_options": None}
+        return {"candidates": [], "topic": None, "topic_options": OPTIONS}
+
+    monkeypatch.setattr(topic_scout, "run", scout)
+    return seen
+
+
+def test_shortlist_pauses_for_the_user_before_research(world, shortlisting):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="ok"))
+    state = world["say"]("write a post")
+    payload = world["pending"]()
+    assert payload["type"] == "topic_choice"
+    assert [o["topic"] for o in payload["options"]] == ["LangGraph hits 1.0", "Rust in the kernel"]
+    assert payload["options"][1]["sources"] == [{"title": "Rust", "url": "https://rust.dev"}]
+    assert world["calls"] == ["topic_scout"]  # nothing researched yet
+    assert state["topic"] is None
+
+    state = world["resume"]({"choice": 1})
+    assert state["topic"]["topic"] == "Rust in the kernel"
+    assert world["calls"][:3] == ["topic_scout", "researcher", "writer(feedback=None)"]
+    assert "topic_pick: you chose 'Rust in the kernel'" in state["activity"]
+    assert world["pending"]()["type"] == "review"  # the flow carries on to review
+
+
+def test_find_more_rescouts_excluding_shown_topics(world, shortlisting):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="ok"))
+    world["say"]("write a post")
+    world["resume"]({"more": True, "hint": "something about open source"})
+    assert world["calls"] == ["topic_scout", "topic_scout"]
+    assert shortlisting[1]["excluded"] == ["LangGraph hits 1.0", "Rust in the kernel"]
+    assert shortlisting[1]["instructions"] == "something about open source"
+    assert world["pending"]()["type"] == "topic_choice"  # asked again
+
+    state = world["resume"]({"choice": 0})
+    assert state["topic"]["topic"] == "LangGraph hits 1.0"
+    assert state["excluded_topics"] == []  # reset once chosen
+
+
+def test_own_topic_and_cancel(world, shortlisting):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="ok"))
+    world["say"]("write a post")
+    state = world["resume"]({"topic": "Why evals beat vibes"})
+    assert state["topic"] == "Why evals beat vibes"
+    assert "researcher" in world["calls"]
+
+    world["calls"].clear()
+    world["script"](decision(plan=["topic_scout", "researcher"]), decision(reply="Cancelled."))
+    world["say"]("find another topic")
+    state = world["resume"]({"cancel": True})
+    assert world["calls"] == ["topic_scout"]
+    assert state["messages"][-1].content == "Cancelled."
+
+
+def test_auto_topic_never_pauses_for_a_pick(world, shortlisting):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="ok"))
+    world["say"]("write a post", auto_topic=True)
+    assert world["pending"]()["type"] == "review"  # straight through to the draft review
+    assert world["calls"][:2] == ["topic_scout", "researcher"]
+
+
+def test_invalid_pick_answer_is_rejected(world, shortlisting):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="ok"))
+    world["say"]("write a post")
+    world["resume"]({"choice": 0, "more": True})  # two answers at once
+    assert world["pending"]()["type"] == "topic_choice"  # asked again, nothing broke
+    assert world["calls"] == ["topic_scout"]

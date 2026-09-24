@@ -1,6 +1,7 @@
 import type { ThreadStatus } from '../api/types'
 
 const styles: Record<ThreadStatus, { label: string; className: string }> = {
+  choose_topic: { label: 'Pick a topic', className: 'bg-review-soft text-review' },
   needs_review: { label: 'Needs review', className: 'bg-review-soft text-review' },
   confirm_publish: { label: 'Confirm publish', className: 'bg-review-soft text-review' },
   published: { label: 'Published', className: 'bg-success-soft text-success' },
