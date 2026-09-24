@@ -118,19 +118,36 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Fix: Chrome's auto-dark mode inverted the palette → `color-scheme: only light`
 - [x] `npm run build` / `lint` / `test` clean (4 SSE parser tests: split chunks, multi-byte chars, CRLF)
 - [x] Live check in Chrome: shell renders with real conversations, no console errors
-- [ ] ✅ Tested by user
+- [x] ✅ Tested by user
 
 ## Phase 10 — Core flow screens
-- [ ] Chat workspace: messages, live agent checklist, composer + suggestion chips, dry-run toggle, usage line
-- [ ] Draft panel: post preview with "…see more" fold, critic scores, Draft / Research / Sources tabs
-- [ ] Review screen: approve / edit / revise / reject / later, rule checks
-- [ ] Publish confirmation modal + published toast
+- [x] `useThreadRun` hook: thread snapshot + live SSE run (plan, activity, current agent), stop, errors, usage
+- [x] Chat workspace: messages, live agent checklist (`RunCard`), composer (Enter to send, Stop), suggestion chips, dry-run toggle (remembered), usage line, start screen that carries the first message into the run
+- [x] Draft panel: post preview with "…see more" fold, critic score bars, Draft / Research / Sources tabs, status-aware action (Review / Confirm publishing / Publish / Review & approve)
+- [x] Review screen (`/chat/:id/review`, focused, no sidebar): post preview, critic tiles + issues, rule checks, Approve / Edit myself / Ask for a revision / Reject / Decide later; revisions stream in place
+- [x] Publish confirmation (native `<dialog>`, "Not now" focused by default) + published / dry-run toast
+- [x] **Dark theme by default** (on request): token-based dark + light palettes, sun/moon toggle (remembered), applied before first paint; `accent` (fills) vs `accent-ink` (text) and inverse tokens so both themes keep ≥4.5:1 text contrast
+- [x] Fix: fold kept a trailing blank line before "…see more" (unit test)
+- [x] Fix: Manager's report sometimes echoed its plan note ("you'll get a confirmation…") → replaced with a state-based summary (regression test)
+- [x] Interrupted turns (stopped / page reloaded mid-run) now say so instead of a silent dangling message
+- [x] Live E2E in Chrome (dry run): scout → research → write → critic (auto-revision) → review → revise → approve → publish (dry run recorded in history)
+- [x] Tests: 10 frontend unit tests (fold, activity parsing, SSE), 164 backend
 - [ ] ✅ Tested by user
 
 ## Phase 11 — Supporting screens & polish
 - [ ] Research brief, History, Health & settings (doctor, LinkedIn connect, models, limits, voice editor)
 - [ ] Loading / empty / error states; keyboard + accessibility pass
+- [ ] Runs survive a page reload: run in the background on the server, browser re-attaches to its event stream (today a disconnect stops the run at its next step)
 - [ ] Production build served by the API (`serve` hosts `frontend/dist`)
+- [ ] ✅ Tested by user
+
+## Phase 12 — Deploy (Docker, linkedin.applybuddy.net on the BipPass droplet)
+- [ ] Access protection for the public site (the API can publish to LinkedIn)
+- [ ] LinkedIn OAuth via a web callback (`https://linkedin.applybuddy.net/...`) instead of the localhost:8765 server
+- [ ] Single image: API + built frontend; `/data` volume for checkpoints, history, token, caches
+- [ ] Compose project on the external `bippass` network, prefixed alias, hard memory limit (co-tenant pattern from applybuddy.sh)
+- [ ] `linkedin.applybuddy.net` site block in the BipPass repo's Caddyfile (bippass.sh deploy overwrites the server copy)
+- [ ] Deploy script in ~/servers (build locally → `docker save | ssh docker load` → compose up), with DNS check before exposing
 - [ ] ✅ Tested by user
 
 ---
@@ -151,5 +168,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - **Phase 5 — live coverage:** later/resume/revise/approve exercised live; edit and reject covered by e2e tests (edit opens `$EDITOR`).
 - **Phase 6 — publish flow:** approving ≠ publishing. "post it" → (review if needed) → `Publish as <you>? [y/N]` → post. Default is no.
 - **Phase 6 — API facts (checked 2026-09-24 in LinkedIn docs):** Posts API `POST /rest/posts`, headers `LinkedIn-Version: YYYYMM` + `X-Restli-Protocol-Version: 2.0.0`, post id in `x-restli-id`; commentary uses "little" format with reserved chars `| { } @ [ ] ( ) < > # \ * _ ~`. Hashtags are made alphanumeric-only for that reason.
+- **Phase 10 — dark theme:** the design canvas is light; dark is now the app default per request (light remains one click away and matches the canvas).
+- **Phase 12 — hosting facts (from ~/servers):** BipPass droplet 165.22.176.141, 1 vCPU / ~957 MB RAM + 2 GB swap; BipPass services are capped at ~720 MB and ApplyBuddy already co-tenants there. Caddy (BipPass compose) is the only public listener; co-tenants join the `bippass` network and add their site block to the BipPass repo's Caddyfile.
 - Tests mock the OpenAI SDK with `httpx2.MockTransport` (the SDK uses `httpx2`; respx only intercepts `httpx`).
 - `uv` created the venv with Python 3.14; project requires >= 3.12.

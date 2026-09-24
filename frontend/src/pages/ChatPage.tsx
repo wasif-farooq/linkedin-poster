@@ -111,7 +111,7 @@ function Conversation({ threadId }: { threadId: string }) {
             <h1 className="truncate font-display text-[26px] font-normal">{thread.title}</h1>
             <StatusPill status={thread.status} />
             {thread.niche && (
-              <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+              <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink">
                 {thread.niche}
               </span>
             )}
@@ -228,6 +228,12 @@ function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun })
         </div>
       ))}
       {lastUser === -1 && card}
+      {!live && messages.length > 0 && messages[messages.length - 1].role === 'user' && !thread.pending && (
+        <p role="status" className="m-0 max-w-160 rounded-[10px] border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-2">
+          This turn was interrupted before the Manager replied (stopped, or the page was reloaded mid-run). Your work
+          up to that point is saved — send your message again to continue.
+        </p>
+      )}
       <div ref={bottom} />
     </section>
   )
@@ -236,7 +242,7 @@ function Transcript({ thread, run }: { thread: ThreadSnapshot; run: ThreadRun })
 function Message({ message }: { message: ChatMessage }) {
   if (message.role === 'user') {
     return (
-      <p className="m-0 max-w-130 self-end rounded-[14px_14px_4px_14px] bg-ink px-4 py-3 text-sm leading-normal whitespace-pre-line text-card-soft">
+      <p className="m-0 max-w-130 self-end rounded-[14px_14px_4px_14px] bg-inverse px-4 py-3 text-sm leading-normal whitespace-pre-line text-on-inverse">
         {message.content}
       </p>
     )

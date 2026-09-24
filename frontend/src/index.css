@@ -1,7 +1,52 @@
 @import 'tailwindcss';
 
-/* Design tokens from the design canvas ("editorial ops console"). */
+/*
+ * Design tokens ("editorial ops console"). Dark is the default theme; light is the
+ * palette from the design canvas. Utilities read these variables, so a theme is just a
+ * different set of values (html[data-theme]). Contrast: body text ≥ 4.5:1 in both.
+ * accent = fills (buttons, bars) · accent-ink = teal text/icons on surfaces.
+ */
 @theme {
+  --color-paper: #141311;
+  --color-paper-2: #1b1a17;
+  --color-card: #211f1c;
+  --color-card-soft: #191816;
+  --color-line: #2f2d29;
+  --color-line-strong: #45423c;
+  --color-ink: #eeebe4;
+  --color-ink-2: #bdb8ad;
+  --color-ink-3: #9a958a;
+  --color-body: #d8d4cb;
+  --color-avatar: #3a3732;
+
+  --color-accent: #1b7f74;
+  --color-accent-dark: #166a61;
+  --color-accent-ink: #5cc6b8;
+  --color-accent-soft: #17312d;
+  --color-review: #e9a55e;
+  --color-review-soft: #36281a;
+  --color-success: #74cf93;
+  --color-success-soft: #1a3123;
+  --color-danger: #f28b7f;
+  --color-danger-soft: #3a1d19;
+
+  /* Inverted surfaces: your chat bubble, the toast, "Publish now". */
+  --color-inverse: #eeebe4;
+  --color-on-inverse: #1a1916;
+  --color-on-inverse-2: #57534a;
+  --color-inverse-link: #0e6b63;
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
   --color-paper: #f5f3ee;
   --color-paper-2: #efece5;
   --color-card: #ffffff;
@@ -12,9 +57,11 @@
   --color-ink-2: #57534a;
   --color-ink-3: #6f6a60;
   --color-body: #3a3833;
+  --color-avatar: #d9d4c8;
 
   --color-accent: #0e6b63;
   --color-accent-dark: #0a4f49;
+  --color-accent-ink: #0e6b63;
   --color-accent-soft: #e3f1ef;
   --color-review: #9a4a08;
   --color-review-soft: #fbeedb;
@@ -23,15 +70,13 @@
   --color-danger: #a3261b;
   --color-danger-soft: #fbe7e4;
 
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --color-inverse: #1a1916;
+  --color-on-inverse: #faf9f5;
+  --color-on-inverse-2: #d9d4c8;
+  --color-inverse-link: #9fd9d2;
 }
 
 @layer base {
-  :root {
-    color-scheme: only light;
-  }
   html,
   body,
   #root {
@@ -41,7 +86,7 @@
     @apply bg-paper font-sans text-ink antialiased;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-accent;
+    @apply outline-2 outline-offset-2 outline-accent-ink;
   }
 }
 

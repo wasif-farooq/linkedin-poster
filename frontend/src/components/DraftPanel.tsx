@@ -236,7 +236,7 @@ function SourcesTab({ brief }: { brief: ResearchBrief | null }) {
     <ol className="m-0 flex list-none flex-col gap-2 p-0">
       {brief.sources.map((s) => (
         <li key={s.id} className="flex gap-3 rounded-[10px] border border-line bg-card px-3.5 py-3">
-          <span className="w-4 shrink-0 font-mono text-xs text-accent">{s.id}</span>
+          <span className="w-4 shrink-0 font-mono text-xs text-accent-ink">{s.id}</span>
           <span className="flex min-w-0 flex-col gap-1">
             <a href={s.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-ink no-underline hover:underline">
               {s.title}
@@ -263,7 +263,7 @@ export function Cites({ ids }: { ids: number[] }) {
   return (
     <span className="flex shrink-0 gap-1" aria-label={`Sources ${ids.join(', ')}`}>
       {ids.map((id) => (
-        <span key={id} className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] text-accent">
+        <span key={id} className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] text-accent-ink">
           {id}
         </span>
       ))}

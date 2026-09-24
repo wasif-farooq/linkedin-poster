@@ -113,7 +113,7 @@ function Badge({ tone }: { tone: 'done' | 'fail' | 'working' | 'waiting' }) {
   const styles = {
     done: 'bg-success-soft text-success',
     fail: 'bg-danger-soft text-danger',
-    working: 'bg-accent-soft text-accent',
+    working: 'bg-accent-soft text-accent-ink',
     waiting: 'bg-review-soft text-review',
   }[tone]
   return (

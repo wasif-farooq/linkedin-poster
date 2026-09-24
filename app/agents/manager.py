@@ -48,7 +48,13 @@ def run(state: Mapping) -> dict:
     messages = [SystemMessage(content=system), *_recent_history(state.get("messages") or [])]
     decision = invoke_structured(get_llm(ROLE), ManagerDecision, messages)
     if report_only:
-        decision = ManagerDecision(reply=decision.reply or _fallback_reply(state))
+        # A report that just repeats the plan-time note ("I'll publish it…") says nothing
+        # about what happened; the state-based summary is better than that.
+        reply = decision.reply.strip()
+        plan_note = (state.get("reply") or "").strip()
+        if not reply or reply == plan_note:
+            reply = _fallback_reply(state)
+        decision = ManagerDecision(reply=reply)
     return apply_decision(state, decision) | {"manager_calls": calls}
 
 

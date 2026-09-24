@@ -27,7 +27,7 @@ export function PostPreview({ text, author, subtitle, size = 'md' }: PostPreview
     >
       <div className="flex items-center gap-2.5">
         <span
-          className={`flex shrink-0 items-center justify-center rounded-full bg-[#d9d4c8] font-semibold ${
+          className={`flex shrink-0 items-center justify-center rounded-full bg-avatar font-semibold ${
             large ? 'size-12' : 'size-10 text-sm'
           }`}
           aria-hidden="true"

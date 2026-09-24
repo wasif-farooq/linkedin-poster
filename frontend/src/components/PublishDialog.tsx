@@ -26,10 +26,10 @@ export function PublishDialog({ payload, busy, onDecide, onLater }: PublishDialo
         e.preventDefault()
         if (!busy) onLater()
       }}
-      className="m-auto w-145 max-w-[calc(100vw-32px)] overflow-hidden rounded-[18px] bg-card-soft p-0 text-ink shadow-[0_24px_64px_rgba(26,25,22,0.35)] backdrop:bg-ink/55"
+      className="m-auto w-145 max-w-[calc(100vw-32px)] overflow-hidden rounded-[18px] bg-card-soft p-0 text-ink shadow-[0_24px_64px_rgba(26,25,22,0.35)] backdrop:bg-black/60"
     >
       <div className="flex flex-col gap-2 px-8 pt-7 pb-2">
-        <span className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+        <span className="flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent-ink" aria-hidden="true">
           <Icon name="send" size={22} strokeWidth={2} />
         </span>
         <h2 id="publish-title" className="m-0 font-display text-[34px] leading-tight font-normal">
@@ -73,9 +73,9 @@ export function PublishDialog({ payload, busy, onDecide, onLater }: PublishDialo
             type="button"
             disabled={busy}
             onClick={() => onDecide(true)}
-            className="flex h-12 items-center gap-2 rounded-[10px] bg-ink px-6 text-[15px] font-semibold text-card-soft hover:bg-black disabled:opacity-50"
+            className="flex h-12 items-center gap-2 rounded-[10px] bg-inverse px-6 text-[15px] font-semibold text-on-inverse hover:opacity-90 disabled:opacity-50"
           >
-            {busy && <span className="size-3.5 animate-spin rounded-full border-2 border-card-soft border-t-transparent" aria-hidden="true" />}
+            {busy && <span className="size-3.5 animate-spin rounded-full border-2 border-on-inverse border-t-transparent" aria-hidden="true" />}
             {busy ? 'Publishing…' : 'Publish now'}
           </button>
         </div>

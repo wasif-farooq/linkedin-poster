@@ -19,25 +19,25 @@ export function Toast({ title, body, href, linkText = 'View post', onClose, time
   return (
     <div
       role="status"
-      className="fixed right-8 bottom-8 z-50 flex w-95 items-start gap-3 rounded-[14px] bg-ink px-4.5 py-4 text-card-soft shadow-[0_16px_40px_rgba(26,25,22,0.3)]"
+      className="fixed right-8 bottom-8 z-50 flex w-95 items-start gap-3 rounded-[14px] bg-inverse px-4.5 py-4 text-on-inverse shadow-[0_16px_40px_rgba(26,25,22,0.3)]"
     >
       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success" aria-hidden="true">
-        <Icon name="check" size={16} strokeWidth={2.6} className="text-white" />
+        <Icon name="check" size={16} strokeWidth={2.6} className="text-card" />
       </span>
       <span className="flex grow flex-col gap-1">
         <span className="text-[15px] font-semibold">{title}</span>
         {(body || href) && (
-          <span className="text-[13px] text-[#d9d4c8]">
+          <span className="text-[13px] text-on-inverse-2">
             {body}{' '}
             {href && (
-              <a href={href} target="_blank" rel="noreferrer" className="text-[#9fd9d2]">
+              <a href={href} target="_blank" rel="noreferrer" className="text-inverse-link">
                 {linkText}
               </a>
             )}
           </span>
         )}
       </span>
-      <button type="button" aria-label="Dismiss" onClick={onClose} className="text-[#d9d4c8] hover:text-white">
+      <button type="button" aria-label="Dismiss" onClick={onClose} className="text-on-inverse-2 hover:text-on-inverse">
         <Icon name="x" size={16} />
       </button>
     </div>

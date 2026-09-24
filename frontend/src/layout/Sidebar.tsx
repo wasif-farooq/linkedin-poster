@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { LinkedInStatus, ThreadSummary } from '../api/types'
 import { Icon, type IconName } from '../components/Icon'
 import { StatusPill } from '../components/StatusPill'
+import { useTheme } from '../hooks/useTheme'
 
 const NAV: { to: string; label: string; icon: IconName }[] = [
   { to: '/chat', label: 'Chat', icon: 'chat' },
@@ -19,6 +20,7 @@ interface SidebarProps {
 export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
   const navigate = useNavigate()
   const threadId = useMatch('/chat/:threadId')?.params.threadId
+  const [theme, toggleTheme] = useTheme()
 
   async function newConversation() {
     try {
@@ -31,9 +33,20 @@ export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
 
   return (
     <aside className="flex w-66 shrink-0 flex-col border-r border-line bg-paper-2">
-      <div className="flex items-baseline gap-2 px-5 pt-6 pb-4">
-        <span className="font-display text-3xl leading-none">Poster</span>
-        <span className="font-mono text-[11px] text-ink-3">v0.1</span>
+      <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <span className="flex items-baseline gap-2">
+          <span className="font-display text-3xl leading-none">Poster</span>
+          <span className="font-mono text-[11px] text-ink-3">v0.1</span>
+        </span>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          className="flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-card hover:text-ink"
+        >
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+        </button>
       </div>
 
       <nav aria-label="Main" className="flex flex-col gap-0.5 px-3">

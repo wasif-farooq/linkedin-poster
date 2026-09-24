@@ -464,3 +464,12 @@ def test_counters_reset_even_when_client_sends_only_messages(world):
         state = graph.get_state(cfg).values
         assert state["manager_calls"] == 1  # would be 2, 3 without the in-graph reset
         assert state["messages"][-1].content == f"answer {i}"
+
+
+def test_report_that_repeats_plan_note_is_replaced(world):
+    """Regression: the model's report echoed its plan note ('You'll get a confirmation…')."""
+    note = "I'll publish it; you'll get a final confirmation prompt."
+    world["script"](decision(plan=FULL_PLAN, reply=note), decision(reply=note))
+    state = world["say"]("write a post", APPROVE)
+    assert state["messages"][-1].content != note
+    assert state["messages"][-1].content.startswith("Your post is approved")

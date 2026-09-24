@@ -125,7 +125,7 @@ function Review({ threadId }: { threadId: string }) {
               {critique.issues.length > 0 && (
                 <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[13px] leading-normal text-body">
                   {critique.issues.slice(0, 3).map((issue, i) => (
-                    <li key={i} className="rounded-lg border border-[#ece8e0] bg-card-soft px-3 py-2.5">
+                    <li key={i} className="rounded-lg border border-line bg-card-soft px-3 py-2.5">
                       {issue}
                     </li>
                   ))}
@@ -179,7 +179,7 @@ function Review({ threadId }: { threadId: string }) {
                 type="button"
                 disabled={busy}
                 onClick={() => decide({ action: 'reject' })}
-                className="h-12 rounded-[10px] border border-[#e8c3bd] bg-card px-5 text-[15px] text-danger hover:bg-danger-soft disabled:opacity-50"
+                className="h-12 rounded-[10px] border border-danger/30 bg-card px-5 text-[15px] text-danger hover:bg-danger-soft disabled:opacity-50"
               >
                 Reject
               </button>

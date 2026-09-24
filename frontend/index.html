@@ -4,9 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- The palette is designed (and contrast-checked) for light mode only; opt out of
-         browser auto-dark, which would invert it. -->
-    <meta name="color-scheme" content="only light" />
+    <!-- Both themes are designed; declaring them also stops browser auto-dark from inverting colors. -->
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      // Apply the saved theme before first paint (dark by default) to avoid a flash.
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('poster.theme') === 'light' ? 'light' : 'dark'
+      } catch {
+        document.documentElement.dataset.theme = 'dark'
+      }
+    </script>
     <meta name="description" content="Chat with an AI manager that researches, writes and publishes your LinkedIn posts." />
     <title>Poster</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
