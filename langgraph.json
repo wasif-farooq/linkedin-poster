@@ -1,0 +1,6 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "linkedin_poster": "./app/graph/studio.py:graph"
+  }
+}

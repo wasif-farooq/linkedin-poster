@@ -1,0 +1,46 @@
+# Topic sources per niche.
+# A niche is matched by its key or any alias (case-insensitive). Unknown niches
+# fall back to `default`, with keywords taken from the niche text itself.
+#
+#   keywords:  used to query Hacker News and to pre-rank candidates
+#   feeds:     RSS/Atom feed URLs
+
+settings:
+  max_age_days: 7          # ignore items older than this
+  per_feed_limit: 15       # items kept per feed
+  hn_min_points: 30        # HN keyword-search threshold
+  max_candidates: 40       # candidates sent to the LLM
+
+niches:
+  ai-engineering:
+    aliases: [ai, ai engineering, llm, llms, genai, generative ai, ai agents, agentic ai, machine learning]
+    keywords: [LLM, AI agent, agentic, RAG, LangGraph, fine-tuning, inference, OpenAI, Anthropic, Claude, Gemini, open-source model, evals]
+    feeds:
+      - https://simonwillison.net/atom/everything/
+      - https://www.latent.space/feed
+      - https://huggingface.co/blog/feed.xml
+      - https://blog.langchain.com/rss/
+      - https://openai.com/news/rss.xml
+      - https://blog.google/technology/ai/rss/
+      - https://techcrunch.com/category/artificial-intelligence/feed/
+      - https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+      - https://www.technologyreview.com/topic/artificial-intelligence/feed
+
+  software-engineering:
+    aliases: [software, software engineering, programming, engineering leadership, devops]
+    keywords: [software engineering, developer productivity, architecture, platform engineering, Kubernetes, Rust, Python, TypeScript, DevOps, CTO]
+    feeds:
+      - https://blog.pragmaticengineer.com/rss/
+      - https://martinfowler.com/feed.atom
+      - https://github.blog/feed/
+      - https://thenewstack.io/feed/
+      - https://www.infoq.com/feed/
+      - https://feeds.arstechnica.com/arstechnica/technology-lab
+
+  default:
+    aliases: []
+    keywords: []
+    feeds:
+      - https://techcrunch.com/category/artificial-intelligence/feed/
+      - https://thenewstack.io/feed/
+      - https://feeds.arstechnica.com/arstechnica/technology-lab

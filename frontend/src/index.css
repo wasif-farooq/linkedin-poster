@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+/* Design tokens from the design canvas ("editorial ops console"). */
+@theme {
+  --color-paper: #f5f3ee;
+  --color-paper-2: #efece5;
+  --color-card: #ffffff;
+  --color-card-soft: #faf9f5;
+  --color-line: #e2ded5;
+  --color-line-strong: #d6d1c6;
+  --color-ink: #1a1916;
+  --color-ink-2: #57534a;
+  --color-ink-3: #6f6a60;
+  --color-body: #3a3833;
+
+  --color-accent: #0e6b63;
+  --color-accent-dark: #0a4f49;
+  --color-accent-soft: #e3f1ef;
+  --color-review: #9a4a08;
+  --color-review-soft: #fbeedb;
+  --color-success: #1f6b3a;
+  --color-success-soft: #e4f2e8;
+  --color-danger: #a3261b;
+  --color-danger-soft: #fbe7e4;
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: only light;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@layer components {
+  /* Small uppercase section label used across screens. */
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.06em] text-ink-3 uppercase;
+  }
+}
