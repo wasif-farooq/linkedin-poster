@@ -194,6 +194,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Scout brief shows each story's age ("5h ago") and "also covered by …"; prompt favours the last 24–48h and bans evergreen explainers; `dev scout` table shows age + coverage
 - [x] Live (2026-09-25): AI pool 50 stories, oldest 3.0 days, 18 multi-source; shortlist all 1h–2 days old; 1 LLM call, ~4.3k tokens in (was ~3.5k); fetch 3–8s
 - [x] Tests: 217 backend (+10), 12 frontend
+- [x] Deployed `77656a2` to linkedin.applybuddy.net 2026-09-25: healthy (~100 MB / 384 MB), public 200. From the droplet: Bing News works, AI pool 50 (oldest 3.0 days, 16 multi-source), software 50 (8 multi-source). Reddit rate-limits bursts from the server IP (429); a failed feed is just skipped
 - [ ] ✅ Tested by user
 
 ---
