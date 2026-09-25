@@ -29,7 +29,8 @@ def test_resolves_key_and_aliases(feeds_file, niche):
     assert cfg.name == "ai-engineering"
     assert cfg.feeds == ["https://a.feed"]
     assert cfg.settings.max_age_days == 3
-    assert cfg.settings.max_candidates == 40  # default kept
+    assert cfg.settings.max_candidates == 50  # default kept
+    assert cfg.news_queries == []
 
 
 def test_unknown_niche_falls_back_to_default(feeds_file):
@@ -37,6 +38,7 @@ def test_unknown_niche_falls_back_to_default(feeds_file):
     assert cfg.feeds == ["https://default.feed"]
     assert cfg.keywords[0] == "Rust for embedded systems"
     assert "Rust" in cfg.keywords and "for" not in cfg.keywords
+    assert cfg.news_queries == ["Rust for embedded systems"]  # the niche itself is searched
 
 
 def test_repo_feeds_yaml_is_valid():

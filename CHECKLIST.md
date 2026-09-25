@@ -187,6 +187,15 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Deployed `2be3aae` (with the image change) to linkedin.applybuddy.net 2026-09-25: container healthy (~95 MB / 384 MB), public 200, `image_provider: pollinations`, new UI served; bippass.com, api.bippass.com/health and api.applybuddy.net 200
 - [ ] ✅ Tested by user
 
+## Change request — more ground, only the latest and hottest topics
+- [x] Freshness: 3-day window (`max_age_days`), widened to 7 only when fewer than 15 stories turn up; undated feed items dropped; feeds sorted newest-first before the per-feed cap; HN front page age-filtered; "(2021)"-style reposts dropped
+- [x] More ground: Bing News RSS keyword searches (`news_queries` per niche, real article URLs decoded from its links; Google News rejected: links need JavaScript) + 12 verified feeds (Decoder, Ars AI, DeepMind, MarkTechPost, Interconnects, TLDR, r/LocalLLaMA, InfoWorld, The Register, Lobsters, ByteByteGo, Meta/Netflix eng); dead LangChain feed removed
+- [x] Heat ranking: same story from several sources merged (URL, title overlap or 4+ shared names) and counted; score = relevance (≤2 hits) + recency + coverage + HN points and points/hour; news-search hits need a second source (no random blogs)
+- [x] Scout brief shows each story's age ("5h ago") and "also covered by …"; prompt favours the last 24–48h and bans evergreen explainers; `dev scout` table shows age + coverage
+- [x] Live (2026-09-25): AI pool 50 stories, oldest 3.0 days, 18 multi-source; shortlist all 1h–2 days old; 1 LLM call, ~4.3k tokens in (was ~3.5k); fetch 3–8s
+- [x] Tests: 217 backend (+10), 12 frontend
+- [ ] ✅ Tested by user
+
 ---
 
 ## Notes / Decisions

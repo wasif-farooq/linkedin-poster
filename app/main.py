@@ -98,14 +98,16 @@ def dev_scout(
     sources_only: bool = typer.Option(False, help="Only fetch candidates, skip the LLM."),
     research: bool = typer.Option(False, "--research", help="Then run the Researcher on it."),
 ):
-    """Run the Topic Scout: fetch RSS + HN candidates and pick a topic."""
+    """Run the Topic Scout: fetch fresh candidates (feeds, HN, news search) and shortlist."""
     from app.agents import topic_scout
     from app.tools.sources.candidates import collect_candidates
     from app.tools.sources.niches import load_niche
 
     cfg = load_niche(niche)
     console.print(
-        f"Niche [bold]{cfg.name}[/bold]: {len(cfg.feeds)} feeds, {len(cfg.keywords)} HN keywords"
+        f"Niche [bold]{cfg.name}[/bold]: {len(cfg.feeds)} feeds, {len(cfg.keywords)} HN keywords, "
+        f"{len(cfg.news_queries)} news searches · last {cfg.settings.max_age_days} days "
+        f"(up to {cfg.settings.fallback_max_age_days} if quiet)"
     )
     start = time.perf_counter()
     with console.status("Fetching candidates..."):
@@ -807,13 +809,17 @@ def _print_topic(choice, elapsed: float, rank: int = 1) -> None:
 def _print_candidates(candidates) -> None:
     from rich.table import Table
 
+    from app.agents.topic_scout import _age_label
+    from app.tools.sources.candidates import age_hours
+
     table = Table(show_lines=False)
     table.add_column("#", justify="right")
     table.add_column("Title", overflow="fold")
     table.add_column("Source")
     table.add_column("KW", justify="right")
     table.add_column("HN pts", justify="right")
-    table.add_column("Date")
+    table.add_column("Also in", justify="right")
+    table.add_column("Age")
     for i, c in enumerate(candidates, start=1):
         table.add_row(
             str(i),
@@ -821,7 +827,8 @@ def _print_candidates(candidates) -> None:
             c.source[:28],
             str(c.keyword_hits),
             "" if c.points is None else str(c.points),
-            (c.published or "")[:10],
+            str(len(c.also_in)) if c.also_in else "",
+            "" if (age := age_hours(c)) is None else _age_label(age),
         )
     console.print(table)
 

@@ -14,9 +14,13 @@ API = "https://hn.algolia.com/api/v1/search"
 ITEM_URL = "https://news.ycombinator.com/item?id={}"
 
 
-def front_page(*, limit: int = 30, client: httpx.Client | None = None) -> list[Candidate]:
-    """Current HN front page stories."""
-    return _search({"tags": "front_page", "hitsPerPage": limit}, client)
+def front_page(
+    *, limit: int = 30, max_age_days: int = 7, client: httpx.Client | None = None
+) -> list[Candidate]:
+    """Current HN front page stories (a story can linger there for a couple of days)."""
+    since = int(time.time()) - max_age_days * 86400
+    params = {"tags": "front_page", "hitsPerPage": limit, "numericFilters": f"created_at_i>{since}"}
+    return _search(params, client)
 
 
 def search_stories(
@@ -41,7 +45,7 @@ def search_stories(
 def collect(keywords: list[str], *, max_age_days: int = 7, min_points: int = 30) -> list[Candidate]:
     """Front page + keyword searches, fetched in parallel."""
     with httpx.Client(timeout=15, transport=httpx.HTTPTransport(retries=2)) as client:
-        jobs = [lambda: front_page(client=client)] + [
+        jobs = [lambda: front_page(max_age_days=max_age_days, client=client)] + [
             (
                 lambda kw=kw: search_stories(
                     kw, max_age_days=max_age_days, min_points=min_points, client=client
@@ -78,6 +82,7 @@ def _to_candidate(hit: dict) -> Candidate | None:
         title=title,
         url=hit.get("url") or discussion,
         source="Hacker News",
+        kind="hn",
         summary=f"HN discussion: {discussion}",
         published=hit.get("created_at"),
         points=hit.get("points"),

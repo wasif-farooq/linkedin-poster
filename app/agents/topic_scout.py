@@ -10,7 +10,7 @@ from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.structured import StructuredOutputError, invoke_structured
 from app.schemas.topic import Candidate, TopicChoice, TopicOption, TopicShortlist
-from app.tools.sources.candidates import collect_candidates
+from app.tools.sources.candidates import age_hours, collect_candidates
 from app.tools.sources.niches import load_niche
 
 log = logging.getLogger(__name__)
@@ -117,7 +117,8 @@ def _brief(
     excluded: list[str] | None = None,
 ) -> str:
     lines = [
-        f"Today: {date.today().isoformat()}",
+        f"Today: {date.today().isoformat()} (candidates are from the last few days, "
+        "newest and most widely covered first)",
         f"Niche: {niche}",
         f"Extra instructions from the manager: {instructions or 'none'}",
         "Recently posted (avoid repeating): "
@@ -132,9 +133,20 @@ def _brief(
         meta = [c.source]
         if c.points is not None:
             meta.append(f"{c.points} points, {c.comments or 0} comments")
-        if c.published:
-            meta.append(c.published[:10])
+        age = age_hours(c)
+        if age is not None:
+            meta.append(_age_label(age))
+        if c.also_in:
+            meta.append(f"also covered by {len(c.also_in)}: {', '.join(c.also_in[:4])}")
         lines.append("    " + " | ".join(meta))
         if c.summary and c.source != "Hacker News":
             lines.append(f"    {c.summary[:220]}")
     return "\n".join(lines)
+
+
+def _age_label(hours: float) -> str:
+    if hours < 1:
+        return "just now"
+    if hours < 48:
+        return f"{int(hours)}h ago"
+    return f"{int(hours // 24)}d ago"

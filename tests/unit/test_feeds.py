@@ -28,13 +28,22 @@ ATOM = f"""<?xml version="1.0" encoding="utf-8"?>
 </feed>"""
 
 
-def test_parse_rss_filters_old_and_untitled_and_strips_html():
+def test_parse_rss_filters_old_undated_and_untitled_and_strips_html():
     items = parse_feed(RSS, "https://ex.com/feed", max_age_days=7)
-    assert [i.title for i in items] == ["Fresh & relevant", "No date"]
+    assert [i.title for i in items] == ["Fresh & relevant"]  # undated could be from 2019
     assert items[0].source == "Test Blog"
     assert items[0].summary == "Hello world"
     assert items[0].published is not None
-    assert items[1].published is None
+
+
+def test_parse_keeps_the_newest_when_a_feed_lists_oldest_first():
+    entries = "".join(
+        f"<item><title>Post {h}h</title><link>https://ex.com/{h}</link>"
+        f"<pubDate>{format_datetime(NOW - timedelta(hours=h))}</pubDate></item>"
+        for h in (50, 30, 10, 2)
+    )
+    feed = f'<?xml version="1.0"?><rss version="2.0"><channel><title>T</title>{entries}</channel></rss>'
+    assert [i.title for i in parse_feed(feed, limit=2)] == ["Post 2h", "Post 10h"]
 
 
 def test_parse_atom():
@@ -51,7 +60,7 @@ def test_parse_respects_limit():
 @respx.mock
 def test_fetch_feed_success():
     respx.get("https://ex.com/feed").mock(return_value=httpx.Response(200, text=RSS))
-    assert len(fetch_feed("https://ex.com/feed")) == 2
+    assert len(fetch_feed("https://ex.com/feed")) == 1
 
 
 @respx.mock

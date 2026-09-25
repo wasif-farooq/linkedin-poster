@@ -4,7 +4,7 @@ A manager-led multi-agent app built on [LangGraph](https://langchain-ai.github.i
 
 | Agent | Job |
 |---|---|
-| 🔎 **Topic Scout** | Picks a fresh, relevant story from RSS feeds and Hacker News, and skips topics you've already posted about |
+| 🔎 **Topic Scout** | Shortlists the hottest stories from the last few days (RSS feeds, Hacker News and news search), and skips topics you've already posted about |
 | 📚 **Researcher** | Reads the source articles, runs free web searches, and writes a brief in which every claim cites a source |
 | ✍️ **Writer** | Turns the brief into a plain-text LinkedIn post in your voice (`config/voice.md`) |
 | 🧐 **Critic** | Scores the hook, insight, accuracy, clarity and tone, runs free rule checks, and sends weak drafts back for revision |
@@ -125,7 +125,9 @@ Everything is set in `.env` (see `.env.example`) or in environment variables.
 
 **Content:**
 - `config/voice.md`: your tone and style. The Writer follows it on every post.
-- `config/feeds.yaml`: niches with their RSS feeds and Hacker News keywords. An unknown niche uses the default feeds, with keywords taken from the niche name.
+- `config/feeds.yaml`: niches with their RSS feeds, Hacker News keywords and news searches. An unknown niche uses the default feeds, with keywords and a news search taken from the niche name.
+- **Freshness:** the Topic Scout only looks at stories from the last `max_age_days` (3), and widens to `fallback_max_age_days` (7) only when fewer than `min_candidates` (15) turn up. Undated items and reposts of old articles, such as "… (2021)", are dropped.
+- **Heat:** within that window, stories rank higher the newer they are, the more sources cover them, and the faster they gain HN points. A news-search hit (Bing News RSS, free, no key) only becomes a candidate when a second source covers the same story; otherwise it just adds heat to stories from the feeds or HN. `dev scout --sources-only` shows the pool with each story's age and coverage.
 - `CRITIC_MIN_SCORE` (default 7): any Critic score below this sends the draft back for revision. `MAX_REVISIONS` (default 2) caps the automatic revisions.
 - `POST_TARGET_MIN_CHARS` / `POST_TARGET_MAX_CHARS`: the target length for posts.
 
@@ -232,7 +234,7 @@ app/
   agents/        one file per node: manager, topic_scout, researcher, writer, critic, human_review, publisher
   prompts/       markdown prompts per agent
   schemas/       Pydantic contracts between agents
-  tools/         deterministic helpers: sources/ (RSS, HN, search, articles), linkedin/, post_rules
+  tools/         deterministic helpers: sources/ (RSS, HN, news search, web search, articles), linkedin/, post_rules
   llm/           Zen client (rate limit, backoff, fallback), structured output, usage/budgets
   db/            post history (SQLite)
 config/          feeds.yaml, voice.md

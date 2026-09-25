@@ -21,7 +21,8 @@ _TAG_RE = re.compile(r"<[^>]+>")
 def fetch_feed(
     url: str, *, limit: int = 15, max_age_days: int = 7, client: httpx.Client | None = None
 ) -> list[Candidate]:
-    """Fetch one feed and return its recent items. Network/parse errors return []."""
+    """Fetch one feed and return its recent items, newest first. Network/parse errors
+    return []."""
     try:
         if client is None:
             with httpx.Client(timeout=15, follow_redirects=True, transport=_transport()) as c:
@@ -42,27 +43,25 @@ def parse_feed(
     source = (parsed.feed.get("title") or url).strip()
     cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
 
-    items: list[Candidate] = []
+    dated = []
     for entry in parsed.entries:
         link = entry.get("link")
         title = clean_text(entry.get("title", ""))
-        if not link or not title:
-            continue
         published = _entry_datetime(entry)
-        if published and published < cutoff:
-            continue
-        items.append(
-            Candidate(
-                title=title,
-                url=link,
-                source=source,
-                summary=clean_text(entry.get("summary", ""))[:400],
-                published=published.isoformat() if published else None,
-            )
+        # Undated items are dropped: there's no telling whether they're from today or 2019.
+        if link and title and published and published >= cutoff:
+            dated.append((published, link, title, entry))
+    dated.sort(key=lambda item: item[0], reverse=True)  # some feeds list oldest first
+    return [
+        Candidate(
+            title=title,
+            url=link,
+            source=source,
+            summary=clean_text(entry.get("summary", ""))[:400],
+            published=published.isoformat(),
         )
-        if len(items) >= limit:
-            break
-    return items
+        for published, link, title, entry in dated[:limit]
+    ]
 
 
 def fetch_feeds(urls: list[str], *, limit: int = 15, max_age_days: int = 7) -> list[Candidate]:

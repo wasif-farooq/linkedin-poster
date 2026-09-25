@@ -8,7 +8,10 @@ Prefer candidates that:
 1. **Are relevant** to the niche. Drop anything that is off-topic, even if it is popular.
 2. **Have substance.** A concrete release, result, benchmark, incident, paper or practice that people can learn from. Avoid funding gossip, rumours, clickbait and listicles.
 3. **Allow an angle.** The author can add an opinion, a lesson or a "what this means for you" takeaway.
-4. **Are timely and have traction.** They are recent, and HN points or comments show people care.
+4. **Are hot right now.** The author wants the latest stories, not last month's news:
+   - Prefer stories from the last 24–48 hours (see each candidate's age).
+   - A story covered by several outlets ("also covered by") or with many HN points or comments is one people are talking about. Rank it higher.
+   - Skip evergreen explainers, tutorials and retrospectives unless something new happened this week.
 5. **Are fresh for this author.** They must not repeat any topic listed under "Recently posted".
 
 Several candidates may cover the same story. Group them by listing all of their IDs in one option's `candidate_ids`, strongest source first.
@@ -18,7 +21,7 @@ Return `options`: up to 5 **distinct** stories, ranked best first. The author ma
 - `candidate_ids`: the candidate IDs for this story.
 - `topic`: a short, specific title. Not clickbait.
 - `angle`: one or two sentences giving the concrete point of view the post will argue.
-- `why_now`: why this matters this week.
+- `why_now`: what happened and when (for example "announced yesterday"), and why it matters now.
 - `audience`: who on LinkedIn will care.
 
 Never offer anything listed under "Recently posted" or "Already suggested". Use only IDs that appear in the candidate list.

@@ -1,17 +1,23 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class Candidate(BaseModel):
-    """A potential topic pulled from a source (RSS item or HN story)."""
+    """A potential topic pulled from a source (RSS item, HN story or news search hit)."""
 
     title: str
     url: str
     source: str = Field(description="Feed/site name or 'Hacker News'")
+    kind: Literal["feed", "hn", "news"] = "feed"  # curated feed, Hacker News, news search
     summary: str = ""
     published: str | None = Field(default=None, description="ISO-8601 timestamp")
     points: int | None = Field(default=None, description="HN points, if from HN")
     comments: int | None = Field(default=None, description="HN comment count, if from HN")
     keyword_hits: int = Field(default=0, description="How many niche keywords matched")
+    also_in: list[str] = Field(
+        default_factory=list, description="Other sources covering the same story (a heat signal)"
+    )
 
 
 class TopicSelection(BaseModel):

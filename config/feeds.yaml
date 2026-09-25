@@ -1,46 +1,69 @@
 # Topic sources per niche.
 # A niche is matched by its key or any alias (case-insensitive). Unknown niches
-# fall back to `default`, with keywords taken from the niche text itself.
+# fall back to `default`, with keywords taken from the niche text itself (and the niche
+# name used as a news search).
 #
-#   keywords:  used to query Hacker News and to pre-rank candidates
-#   feeds:     RSS/Atom feed URLs
+#   keywords:      used to query Hacker News and to pre-rank candidates
+#   feeds:         RSS/Atom feed URLs (only dated items are used)
+#   news_queries:  Bing News searches: one query covers thousands of outlets
 
 settings:
-  max_age_days: 7          # ignore items older than this
-  per_feed_limit: 15       # items kept per feed
-  hn_min_points: 30        # HN keyword-search threshold
-  max_candidates: 40       # candidates sent to the LLM
+  max_age_days: 3            # freshness window: only stories from the last 3 days...
+  fallback_max_age_days: 7   # ...widened to 7 when that finds fewer than min_candidates
+  min_candidates: 15
+  per_feed_limit: 15         # newest items kept per feed
+  news_results_per_query: 15
+  hn_min_points: 30          # HN keyword-search threshold
+  max_candidates: 50         # candidates sent to the LLM
 
 niches:
   ai-engineering:
     aliases: [ai, ai engineering, llm, llms, genai, generative ai, ai agents, agentic ai, machine learning]
     keywords: [LLM, AI agent, agentic, RAG, LangGraph, fine-tuning, inference, OpenAI, Anthropic, Claude, Gemini, open-source model, evals]
+    news_queries: [LLM, AI agents, OpenAI, Anthropic Claude, Google Gemini, open-source AI model]
     feeds:
       - https://simonwillison.net/atom/everything/
       - https://www.latent.space/feed
       - https://huggingface.co/blog/feed.xml
-      - https://blog.langchain.com/rss/
       - https://openai.com/news/rss.xml
+      - https://deepmind.google/blog/rss.xml
       - https://blog.google/technology/ai/rss/
       - https://techcrunch.com/category/artificial-intelligence/feed/
       - https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+      - https://arstechnica.com/ai/feed/
+      - https://the-decoder.com/feed/
+      - https://www.marktechpost.com/feed/
       - https://www.technologyreview.com/topic/artificial-intelligence/feed
+      - https://www.interconnects.ai/feed
+      - https://tldr.tech/api/rss/ai
+      - https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day
 
   software-engineering:
     aliases: [software, software engineering, programming, engineering leadership, devops]
     keywords: [software engineering, developer productivity, architecture, platform engineering, Kubernetes, Rust, Python, TypeScript, DevOps, CTO]
+    news_queries: [software engineering, developer tools, platform engineering, Kubernetes, AI coding assistant]
     feeds:
       - https://blog.pragmaticengineer.com/rss/
       - https://martinfowler.com/feed.atom
       - https://github.blog/feed/
       - https://thenewstack.io/feed/
       - https://www.infoq.com/feed/
+      - https://www.infoworld.com/feed/
+      - https://www.theregister.com/software/headlines.atom
       - https://feeds.arstechnica.com/arstechnica/technology-lab
+      - https://lobste.rs/rss
+      - https://tldr.tech/api/rss/tech
+      - https://blog.bytebytego.com/feed
+      - https://engineering.fb.com/feed/
+      - https://netflixtechblog.com/feed
 
   default:
     aliases: []
     keywords: []
+    news_queries: []
     feeds:
       - https://techcrunch.com/category/artificial-intelligence/feed/
       - https://thenewstack.io/feed/
       - https://feeds.arstechnica.com/arstechnica/technology-lab
+      - https://www.infoworld.com/feed/
+      - https://tldr.tech/api/rss/tech
