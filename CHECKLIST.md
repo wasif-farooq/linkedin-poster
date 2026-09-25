@@ -184,6 +184,7 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Review page stacks into one column below 1024px; header/footer wrap; smaller paddings on phones
 - [x] Topic picker, publish dialog, toast, settings, start screen adapted for phone widths
 - [x] Checked at 390px (chat, draft, review) and 820px in the browser: no horizontal overflow
+- [x] Deployed `2be3aae` (with the image change) to linkedin.applybuddy.net 2026-09-25: container healthy (~95 MB / 384 MB), public 200, `image_provider: pollinations`, new UI served; bippass.com, api.bippass.com/health and api.applybuddy.net 200
 - [ ] ✅ Tested by user
 
 ---
