@@ -1,4 +1,4 @@
-"""Minimal LinkedIn REST client: who am I, and create a text post."""
+"""Minimal LinkedIn REST client: who am I, upload an image, and create a post."""
 
 import re
 
@@ -65,9 +65,27 @@ class LinkedInClient:
         _raise_for(resp, "fetch your LinkedIn profile")
         return resp.json()
 
-    def create_post(self, author_urn: str, text: str) -> str:
-        """Publish a public text post; returns its URN. Never retried automatically:
-        a timeout or 5xx may still have created the post."""
+    def upload_image(self, owner_urn: str, data: bytes) -> str:
+        """Images API: register an upload, PUT the bytes; returns the image URN for a post."""
+        resp = self._http.post(
+            "/rest/images",
+            params={"action": "initializeUpload"},
+            json={"initializeUploadRequest": {"owner": owner_urn}},
+        )
+        _raise_for(resp, "start the image upload")
+        value = resp.json().get("value") or {}
+        upload_url, urn = value.get("uploadUrl"), value.get("image")
+        if not upload_url or not urn:
+            raise LinkedInError("LinkedIn returned no upload URL for the image.")
+        put = self._http.put(upload_url, content=data, timeout=120)
+        _raise_for(put, "upload the image")
+        return urn
+
+    def create_post(
+        self, author_urn: str, text: str, *, image_urn: str | None = None, alt_text: str = ""
+    ) -> str:
+        """Publish a public post (text, optionally with one image); returns its URN. Never
+        retried automatically: a timeout or 5xx may still have created the post."""
         body = {
             "author": author_urn,
             "commentary": escape_little(text),
@@ -80,6 +98,8 @@ class LinkedInClient:
             "lifecycleState": "PUBLISHED",
             "isReshareDisabledByAuthor": False,
         }
+        if image_urn:
+            body["content"] = {"media": {"id": image_urn, "altText": alt_text[:4000]}}
         resp = self._http.post("/rest/posts", json=body)
         _raise_for(resp, "publish the post")
         urn = resp.headers.get("x-restli-id")

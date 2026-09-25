@@ -15,6 +15,10 @@ class SearchBudgetExceededError(RuntimeError):
     pass
 
 
+class ImageBudgetExceededError(RuntimeError):
+    pass
+
+
 @dataclass
 class UsageSnapshot:
     calls: int
@@ -23,6 +27,7 @@ class UsageSnapshot:
     rate_limit_retries: int
     searches: int = 0
     search_cache_hits: int = 0
+    images: int = 0
 
     def __str__(self) -> str:
         text = (
@@ -33,6 +38,8 @@ class UsageSnapshot:
             text += f" | rate-limit retries: {self.rate_limit_retries}"
         if self.searches or self.search_cache_hits:
             text += f" | searches: {self.searches} (+{self.search_cache_hits} cached)"
+        if self.images:
+            text += f" | images: {self.images}"
         return text
 
 
@@ -59,6 +66,17 @@ class UsageTracker(BaseCallbackHandler):
             self.rate_limit_retries = 0
             self.searches = 0
             self.search_cache_hits = 0
+            self.images = 0
+
+    def record_image(self, limit: int) -> None:
+        """Count a generated image; at most `limit` per run (images may cost money)."""
+        with self._lock:
+            if self.images >= limit:
+                raise ImageBudgetExceededError(
+                    f"Image budget of {limit} per run reached "
+                    "(raise MAX_IMAGES_PER_RUN to allow more)."
+                )
+            self.images += 1
 
     def record_search(self, *, cached: bool) -> None:
         """Count a search; live (uncached) searches are limited by `max_searches`."""
@@ -111,6 +129,7 @@ class UsageTracker(BaseCallbackHandler):
                 self.rate_limit_retries,
                 self.searches,
                 self.search_cache_hits,
+                self.images,
             )
 
 

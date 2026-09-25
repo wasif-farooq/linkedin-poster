@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import type { ResearchBrief, ThreadSnapshot } from '../api/types'
 import { Icon } from './Icon'
+import { ImageCard } from './ImageCard'
 import { PostPreview } from './PostPreview'
 import { ScoreBars, VerdictPill } from './Scores'
 import { ShareActions } from './ShareActions'
@@ -17,6 +18,7 @@ interface DraftPanelProps {
   onShared: (articleUrl: string | null) => void
   onRequestReview: () => void
   onOpenPublishConfirm: () => void
+  onThreadUpdated: (thread: ThreadSnapshot) => void
 }
 
 export function DraftPanel({
@@ -28,6 +30,7 @@ export function DraftPanel({
   onShared,
   onRequestReview,
   onOpenPublishConfirm,
+  onThreadUpdated,
 }: DraftPanelProps) {
   const [tab, setTab] = useState<Tab>('draft')
   const brief = thread.research_brief
@@ -40,9 +43,9 @@ export function DraftPanel({
   return (
     <aside
       aria-label="Current draft"
-      className="flex w-113 shrink-0 flex-col border-l border-line bg-card-soft"
+      className="flex min-h-0 w-full grow flex-col overflow-y-auto bg-card-soft xl:w-113 xl:grow-0 xl:shrink-0 xl:overflow-hidden xl:border-l xl:border-line"
     >
-      <div role="tablist" aria-label="Draft panel" className="flex h-16 shrink-0 items-end gap-1 border-b border-line px-5">
+      <div role="tablist" aria-label="Draft panel" className="sticky top-0 z-10 flex h-14 shrink-0 items-end gap-1 border-b border-line bg-card-soft px-3 sm:px-5 xl:static xl:h-16">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -65,9 +68,11 @@ export function DraftPanel({
         role="tabpanel"
         id={`panel-${tab}`}
         aria-labelledby={`tab-${tab}`}
-        className="flex min-h-0 grow flex-col gap-4 overflow-y-auto p-5"
+        className="flex shrink-0 flex-col gap-4 p-4 sm:p-5 xl:min-h-0 xl:shrink xl:grow xl:overflow-y-auto"
       >
-        {tab === 'draft' && <DraftTab thread={thread} author={author} />}
+        {tab === 'draft' && (
+          <DraftTab thread={thread} author={author} running={running} onThreadUpdated={onThreadUpdated} />
+        )}
         {tab === 'research' && <ResearchTab brief={brief} />}
         {tab === 'sources' && <SourcesTab brief={brief} />}
       </div>
@@ -87,7 +92,17 @@ export function DraftPanel({
   )
 }
 
-function DraftTab({ thread, author }: { thread: ThreadSnapshot; author: string }) {
+function DraftTab({
+  thread,
+  author,
+  running,
+  onThreadUpdated,
+}: {
+  thread: ThreadSnapshot
+  author: string
+  running: boolean
+  onThreadUpdated: (thread: ThreadSnapshot) => void
+}) {
   const { draft, critique } = thread
   if (!draft) {
     return (
@@ -102,7 +117,9 @@ function DraftTab({ thread, author }: { thread: ThreadSnapshot; author: string }
         text={draft.full_text}
         author={author}
         subtitle={`${thread.approved ? 'Approved' : 'Draft preview'} · ${draft.chars.toLocaleString()} characters`}
+        image={thread.image}
       />
+      <ImageCard thread={thread} running={running} onUpdated={onThreadUpdated} />
       {critique && (
         <section className="flex flex-col gap-2.5 rounded-xl border border-line bg-card px-4.5 py-4">
           <div className="flex items-center justify-between">
@@ -124,14 +141,14 @@ function DraftActions({
   onShared,
   onRequestReview,
   onOpenPublishConfirm,
-}: Omit<DraftPanelProps, 'author'>) {
+}: Omit<DraftPanelProps, 'author' | 'onThreadUpdated'>) {
   const primary =
     'flex h-12 items-center justify-center gap-2 rounded-[10px] bg-accent text-[15px] font-semibold text-white no-underline hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-50'
   const status = thread.status
   const result = thread.publish_result
 
   return (
-    <div className="flex flex-col gap-2.5 border-t border-line px-5 pt-4 pb-5">
+    <div className="flex flex-col gap-2.5 border-t border-line px-4 pt-4 pb-5 sm:px-5">
       {status === 'needs_review' && (
         <>
           <StatusLine tone="review" icon="clock" text="Waiting for your review" />

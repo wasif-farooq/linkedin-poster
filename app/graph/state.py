@@ -3,7 +3,8 @@ from typing import Annotated, Any, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
-WORKERS = ("topic_scout", "researcher", "writer", "critic", "publisher")  # wrapped agents
+# Wrapped agents
+WORKERS = ("topic_scout", "researcher", "writer", "critic", "illustrator", "publisher")
 HUMAN_STEPS = ("topic_pick", "human_review")  # pause for the user via interrupt()
 STEPS = (*WORKERS, *HUMAN_STEPS)  # everything the dispatcher can route to
 
@@ -22,6 +23,7 @@ class PostState(TypedDict, total=False):
     research_brief: dict[str, Any] | None
     draft: dict[str, Any] | None
     critique: dict[str, Any] | None
+    image: dict[str, Any] | None  # PostImage; the file is in data/images
     revision_count: int
     human_feedback: str | None
     recent_topics: list[str]

@@ -32,8 +32,8 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="flex grow flex-col gap-6 overflow-y-auto p-10">
-      <h1 className="m-0 font-display text-[40px] leading-none font-normal">Health &amp; settings</h1>
+    <main className="flex grow flex-col gap-6 overflow-y-auto p-5 sm:p-10">
+      <h1 className="m-0 font-display text-[32px] leading-none font-normal sm:text-[40px]">Health &amp; settings</h1>
 
       {result === 'connected' && (
         <p role="status" className="m-0 max-w-xl rounded-[10px] bg-success-soft px-4 py-3 text-sm text-success">

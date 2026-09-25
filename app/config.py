@@ -9,7 +9,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
-ROLES = ("manager", "topic_scout", "researcher", "writer", "critic")
+IMAGES_DIR = DATA_DIR / "images"
+
+ROLES = ("manager", "topic_scout", "researcher", "writer", "critic", "illustrator")
 
 
 class Settings(BaseSettings):
@@ -24,6 +26,7 @@ class Settings(BaseSettings):
     researcher_model: str | None = None
     writer_model: str | None = None
     critic_model: str | None = None
+    illustrator_model: str | None = None  # writes the image prompt
     # Comma-separated; tried in order if a model is removed or blocked (404/403).
     llm_fallback_models: str = ""
     llm_temperature: float = 0.4
@@ -70,6 +73,16 @@ class Settings(BaseSettings):
     post_target_min_chars: int = 700
     post_target_max_chars: int = 1800
     critic_min_score: int = Field(default=7, ge=1, le=10)  # any score below -> revise
+
+    # Images (on request: "make an image", or the Generate image button)
+    # auto = OpenAI if OPENAI_API_KEY is set, else Pollinations (free, no key, watermarked)
+    image_provider: Literal["auto", "pollinations", "openai"] = "auto"
+    openai_api_key: str = ""
+    openai_image_model: str = "gpt-image-1"
+    openai_image_quality: Literal["low", "medium", "high", "auto"] = "medium"
+    pollinations_url: str = "https://image.pollinations.ai/prompt/"
+    image_timeout: float = 180
+    max_images_per_run: int = Field(default=3, ge=0)
 
     # Limits
     max_revisions: int = Field(default=2, ge=0)

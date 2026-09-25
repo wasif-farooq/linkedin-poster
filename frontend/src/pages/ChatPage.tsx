@@ -16,6 +16,7 @@ import { StatusPill } from '../components/StatusPill'
 import { Toast } from '../components/Toast'
 import { TopicPicker } from '../components/TopicPicker'
 import { useAutoTopic, useDryRun } from '../hooks/useLocalStorage'
+import { useMediaQuery, XL } from '../hooks/useMediaQuery'
 import { useThreadRun, type ThreadRun } from '../hooks/useThreadRun'
 import { useShell } from '../layout/shell'
 import { formatTokens } from '../lib/post'
@@ -46,9 +47,9 @@ function StartConversation() {
   }
 
   return (
-    <main className="flex grow flex-col items-center justify-center gap-6 p-10">
+    <main className="flex grow flex-col items-center justify-center gap-6 overflow-y-auto p-5 sm:p-10">
       <div className="flex max-w-xl flex-col items-center gap-3 text-center">
-        <h1 className="font-display text-5xl leading-none">Chat with the Manager</h1>
+        <h1 className="m-0 font-display text-4xl leading-none sm:text-5xl">Chat with the Manager</h1>
         <p className="text-ink-2">
           Ask for a post and the team finds a topic, researches it, writes it and gets it reviewed.
           Nothing is published until you approve it.
@@ -84,6 +85,9 @@ function Conversation({ threadId }: { threadId: string }) {
   const [dryRun, setDryRun] = useDryRun()
   const [autoTopic, setAutoTopic] = useAutoTopic()
   const [publishDismissed, setPublishDismissed] = useState(false)
+  // Narrow screens show the chat or the draft panel, not both side by side.
+  const wide = useMediaQuery(XL)
+  const [view, setView] = useState<'chat' | 'draft'>('chat')
   const location = useLocation()
   const navigate = useNavigate()
   const { thread } = run
@@ -100,6 +104,7 @@ function Conversation({ threadId }: { threadId: string }) {
 
   const sendText = (text: string) => {
     setPublishDismissed(false)
+    setView('chat')
     void run.send(text, { dryRun, autoTopic })
   }
 
@@ -111,12 +116,16 @@ function Conversation({ threadId }: { threadId: string }) {
   const pending = thread.pending
   const showPublishDialog = pending?.type === 'publish_confirm' && !publishDismissed && !run.running
 
+  const showChat = wide || view === 'chat'
+  const showDraft = wide || view === 'draft'
+
   return (
-    <div className="flex min-h-0 grow">
-      <main className="flex min-w-0 grow flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line px-7">
+    <div className="flex min-h-0 grow flex-col xl:flex-row">
+      {!wide && <ViewSwitch view={view} onChange={setView} hasDraft={thread.draft !== null} />}
+      <main className={`min-h-0 min-w-0 grow flex-col ${showChat ? 'flex' : 'hidden'}`}>
+        <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
-            <h1 className="truncate font-display text-[26px] font-normal">{thread.title}</h1>
+            <h1 className="m-0 truncate font-display text-[22px] font-normal sm:text-[26px]">{thread.title}</h1>
             <StatusPill status={thread.status} />
             {thread.niche && (
               <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink">
@@ -124,7 +133,7 @@ function Conversation({ threadId }: { threadId: string }) {
               </span>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-5">
+          <div className="flex shrink-0 items-center gap-4 sm:gap-5">
             <label
               className="flex cursor-pointer items-center gap-2.5 text-[13px] text-ink-2"
               title="On: the Topic Scout picks the best topic. Off: you choose from its shortlist."
@@ -155,7 +164,7 @@ function Conversation({ threadId }: { threadId: string }) {
           onPickTopic={(answer) => void run.resume(answer, dryRun)}
         />
 
-        <div className="flex flex-col gap-2.5 px-7 pb-5">
+        <div className="flex flex-col gap-2.5 px-4 pb-4 sm:px-7 sm:pb-5">
           {run.error && (
             <div role="alert" className="flex items-start justify-between gap-3 rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">
               <span>{run.error}</span>
@@ -189,26 +198,29 @@ function Conversation({ threadId }: { threadId: string }) {
         </div>
       </main>
 
-      <DraftPanel
-        thread={thread}
-        author={linkedin?.connected ? (linkedin.name ?? 'You') : 'You'}
-        running={run.running}
-        publishMode={publishMode}
-        onPublish={() => sendText('post it')}
-        onShared={(articleUrl) => {
-          // LinkedIn opened in a new tab from the click itself; record it here.
-          api
-            .markShared(thread.id, articleUrl)
-            .then((snapshot) => {
-              run.replaceThread(snapshot)
-              void reloadThreads()
-              setToast({ title: 'Opened on LinkedIn', body: 'Review the post there and press Post.' })
-            })
-            .catch(() => undefined)
-        }}
-        onRequestReview={() => sendText('let me review it')}
-        onOpenPublishConfirm={() => setPublishDismissed(false)}
-      />
+      {showDraft && (
+        <DraftPanel
+          thread={thread}
+          author={linkedin?.connected ? (linkedin.name ?? 'You') : 'You'}
+          running={run.running}
+          publishMode={publishMode}
+          onPublish={() => sendText('post it')}
+          onShared={(articleUrl) => {
+            // LinkedIn opened in a new tab from the click itself; record it here.
+            api
+              .markShared(thread.id, articleUrl)
+              .then((snapshot) => {
+                run.replaceThread(snapshot)
+                void reloadThreads()
+                setToast({ title: 'Opened on LinkedIn', body: 'Review the post there and press Post.' })
+              })
+              .catch(() => undefined)
+          }}
+          onRequestReview={() => sendText('let me review it')}
+          onOpenPublishConfirm={() => setPublishDismissed(false)}
+          onThreadUpdated={run.replaceThread}
+        />
+      )}
 
       {showPublishDialog && (
         <PublishDialog
@@ -219,6 +231,41 @@ function Conversation({ threadId }: { threadId: string }) {
         />
       )}
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    </div>
+  )
+}
+
+/** Narrow screens: switch between the conversation and the draft panel. */
+function ViewSwitch({
+  view,
+  onChange,
+  hasDraft,
+}: {
+  view: 'chat' | 'draft'
+  onChange: (view: 'chat' | 'draft') => void
+  hasDraft: boolean
+}) {
+  const tabs = [
+    { id: 'chat', label: 'Chat' },
+    { id: 'draft', label: 'Draft' },
+  ] as const
+  return (
+    <div role="tablist" aria-label="Show" className="flex shrink-0 gap-1 border-b border-line px-3 pt-2">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={view === t.id}
+          onClick={() => onChange(t.id)}
+          className={`flex h-10 grow items-center justify-center gap-2 border-b-2 text-sm ${
+            view === t.id ? 'border-accent font-semibold text-ink' : 'border-transparent text-ink-2'
+          }`}
+        >
+          {t.label}
+          {t.id === 'draft' && hasDraft && <span className="size-1.5 rounded-full bg-accent" aria-label="(ready)" />}
+        </button>
+      ))}
     </div>
   )
 }
@@ -267,7 +314,7 @@ function Transcript({
   ) : null
 
   return (
-    <section aria-label="Conversation" className="flex min-h-0 grow flex-col gap-5 overflow-y-auto px-7 pt-7 pb-3">
+    <section aria-label="Conversation" className="flex min-h-0 grow flex-col gap-5 overflow-y-auto px-4 pt-5 pb-3 sm:px-7 sm:pt-7">
       {messages.length === 0 && !live && (
         <p className="text-sm text-ink-3">Say what you’d like — the Manager takes it from there.</p>
       )}

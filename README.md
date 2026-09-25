@@ -54,6 +54,7 @@ uv run linkedin-poster doctor                     # check model, feeds, search, 
 - "punchier hook"
 - "less formal"
 - "show me the sources"
+- "make an image" (optionally with a style: "new image, photo style")
 - "let me review it"
 - "post it"
 
@@ -87,6 +88,20 @@ By default (`PUBLISH_MODE=share`), an approved post gets a **Share on LinkedIn**
 
 To have the app post directly through the LinkedIn API instead, set `PUBLISH_MODE=api` and connect a LinkedIn app as described below.
 
+## Images
+
+A post can get one image, **only when you ask for one**: say "make an image" in the chat, or use **Generate** in the draft panel's Image card (with an optional style such as "photo" or "isometric"). The Illustrator writes an image prompt from the post (1 LLM call), then an image backend renders it at LinkedIn's landscape 1.91:1 size. Asking again makes a clearly different image. Editing the text keeps the image; a new topic drops it.
+
+| `IMAGE_PROVIDER` | Backend | Cost |
+|---|---|---|
+| `auto` (default) | OpenAI when `OPENAI_API_KEY` is set, otherwise Pollinations | |
+| `pollinations` | [Pollinations.ai](https://pollinations.ai), no key needed | Free. It's unofficial, adds a small watermark, and is slow or busy at times (busy replies are retried twice) |
+| `openai` | `gpt-image-1` (`OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`) | Paid, about $0.04 per medium image |
+
+`MAX_IMAGES_PER_RUN` (default 3) caps images per turn. Files are kept in `data/images/`.
+- **Share mode:** LinkedIn's share link can't carry an image, so **Download** it and add it in the composer.
+- **API mode:** the image is uploaded and posted with the text.
+
 ## Connect LinkedIn (API mode only)
 
 1. Go to <https://www.linkedin.com/developers/apps> and click **Create app**. LinkedIn requires the app to be linked to a LinkedIn Page; any page you admin works.
@@ -104,7 +119,7 @@ Everything is set in `.env` (see `.env.example`) or in environment variables.
 
 **Models (OpenCode Zen, OpenAI-compatible API):**
 - The default model is `space-bunny-free` for every agent. As of 2026-09-24 it's the only free Zen model that works outside OpenCode. The others return `FreeTierError`.
-- To set one model for everything, use `DEFAULT_MODEL`. To set a model for one agent, use a per-agent override: `MANAGER_MODEL`, `TOPIC_SCOUT_MODEL`, `RESEARCHER_MODEL`, `WRITER_MODEL` or `CRITIC_MODEL`.
+- To set one model for everything, use `DEFAULT_MODEL`. To set a model for one agent, use a per-agent override: `MANAGER_MODEL`, `TOPIC_SCOUT_MODEL`, `RESEARCHER_MODEL`, `WRITER_MODEL`, `CRITIC_MODEL` or `ILLUSTRATOR_MODEL`.
 - `LLM_FALLBACK_MODELS`: comma-separated models to switch to if the current one is removed or blocked (HTTP 404/403). Free "stealth" models rotate, so adding a paid model here is a cheap safety net.
 - `ping --model <id>` tries any model directly.
 
@@ -143,6 +158,8 @@ It runs the same graph as the CLI and shares its conversations. Live agent progr
 | `GET /api/threads` · `POST /api/threads` | List conversations with their status · start a new one (optional `niche`) |
 | `GET /api/threads/{id}` | Everything about one conversation: messages, topic, brief, draft, critique, approval, publish result, pending review |
 | `POST /api/threads/{id}/messages` | `{text, dry_run}` → SSE stream of the turn |
+| `POST /api/threads/{id}/image` · `DELETE …/image` | `{direction}` makes (or remakes) the post's image without a chat turn · removes it. Returns 409 while a question is pending |
+| `GET /api/images/{file}` | A generated image |
 | `POST /api/threads/{id}/resume` | `{answer, dry_run}` answers a review (`{"action": "approve"|"edit"|"revise"|"reject", "text"}`) or a publish confirmation (`{"confirm": true}`) → SSE |
 | `GET /api/history` · `GET /api/doctor` | Post history · health checks |
 | `GET /api/linkedin` · `POST /api/linkedin/connect` | Connection status · start OAuth (returns the URL to open) |

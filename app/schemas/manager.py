@@ -2,7 +2,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-Worker = Literal["topic_scout", "researcher", "writer", "critic", "human_review", "publisher"]
+Worker = Literal[
+    "topic_scout", "researcher", "writer", "critic", "illustrator", "human_review", "publisher"
+]
 
 
 class ManagerDecision(BaseModel):

@@ -17,6 +17,7 @@ from langgraph.types import interrupt
 
 from app.config import get_settings
 from app.db.repository import PostRepository
+from app.tools.images.generate import image_path
 from app.tools.linkedin.client import LinkedInClient, post_url
 from app.tools.linkedin.oauth import load_token
 from app.tools.linkedin.share import compose_url, share_text
@@ -50,14 +51,32 @@ def run(state: Mapping) -> dict:
         return _result("dry_run", None, None)
 
     token = load_token()  # raises LinkedInAuthError with instructions if missing/expired
+    image = state.get("image")
+    image_file = image_path(image["file"]) if image else None
+    if image and image_file is None:
+        raise FileNotFoundError("The post's image file is missing. Make a new image or remove it.")
     answer = interrupt(
-        {"type": "publish_confirm", "post": text, "chars": len(text), "account": token.name}
+        {
+            "type": "publish_confirm",
+            "post": text,
+            "chars": len(text),
+            "account": token.name,
+            "image": f"/api/images/{image['file']}" if image else None,
+        }
     )
     if not (isinstance(answer, dict) and answer.get("confirm") is True):
         return _result("cancelled", None, None)
 
     with LinkedInClient(token.access_token, version=get_settings().linkedin_version) as client:
-        urn = client.create_post(token.author_urn, text)
+        image_urn = None
+        if image_file:  # uploading creates nothing visible; only create_post publishes
+            image_urn = client.upload_image(token.author_urn, image_file.read_bytes())
+        urn = client.create_post(
+            token.author_urn,
+            text,
+            image_urn=image_urn,
+            alt_text=image["alt_text"] if image else "",
+        )
     url = post_url(urn)
     repo.add(status="published", topic=title, text=text, urn=urn, url=url, source_urls=sources)
     return _result("published", urn, url)

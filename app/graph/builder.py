@@ -167,6 +167,9 @@ def describe(name: str, update: Mapping, state: Mapping) -> str:
         c = update["critique"]
         low_name, low = min(c["scores"].items(), key=lambda kv: kv[1])
         return f"critic: {c['verdict']} (lowest: {low_name} {low})"
+    if name == "illustrator":
+        image = update["image"]
+        return f"illustrator: made an image ({image['provider']}) — {image['alt_text']}"
     if name == "publisher":
         r = update["publish_result"]
         if r["status"] == "share_ready":

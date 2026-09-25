@@ -167,6 +167,25 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - [x] Deployed `0348aed` to linkedin.applybuddy.net: container healthy (0 restarts, ~100 MB), picker served, existing conversations kept, neighbours 200
 - [ ] ✅ Tested by user
 
+## Change request — image for the post (on request)
+- [x] New `illustrator` agent: 1 LLM call writes the image prompt (no text in the image, no logos or clichés), then the image backend renders it at 1.91:1; regenerating asks for a clearly different image
+- [x] Backends: **Pollinations** (free, no key; the default) and **OpenAI gpt-image-1** (used automatically when `OPENAI_API_KEY` is set). `IMAGE_PROVIDER`, `MAX_IMAGES_PER_RUN=3` (counted by the usage tracker); busy Pollinations responses are retried twice
+- [x] Chat: "make an image (photo style)" → Manager plans `illustrator` (writes the post first if there's none); text edits keep the image, a new topic drops it
+- [x] Web: Image card in the draft panel (style box, Generate / New image, Download, Remove) via `POST/DELETE /api/threads/{id}/image`; the image shows in the post preview, review page and publish dialog; `GET /api/images/{file}` (strict name pattern)
+- [x] Share mode: a notice plus a Download link (LinkedIn's share link can't carry images). API mode: Images API upload + `content.media` with alt text
+- [x] CLI: Illustrator step + saved image path printed
+- [x] Tests: 209 backend (+25: backends, budget, retries, path safety, agent, graph flow, API, LinkedIn upload), 12 frontend
+- [x] Live: real model + Pollinations made an image for `b01c710b` (1m40s incl. retries while the free tier was busy)
+- [ ] ✅ Tested by user
+
+## Change request — responsive frontend
+- [x] < 1024px: sidebar becomes a slide-in drawer (menu button in a top bar; Escape/backdrop/navigation close it; inert while hidden)
+- [x] < 1280px: chat page shows **Chat | Draft** tabs instead of the fixed side panel; the draft panel scrolls as one page with a sticky tab bar
+- [x] Review page stacks into one column below 1024px; header/footer wrap; smaller paddings on phones
+- [x] Topic picker, publish dialog, toast, settings, start screen adapted for phone widths
+- [x] Checked at 390px (chat, draft, review) and 820px in the browser: no horizontal overflow
+- [ ] ✅ Tested by user
+
 ---
 
 ## Notes / Decisions
@@ -189,5 +208,6 @@ Legend: `[x]` done · `[ ]` pending. The **✅ Tested by user** box at the end o
 - **Phase 12 — hosting facts (from ~/servers):** BipPass droplet 165.22.176.141, 1 vCPU / ~957 MB RAM + 2 GB swap; BipPass services are capped at ~720 MB and ApplyBuddy already co-tenants there. Caddy (BipPass compose) is the only public listener; co-tenants join the `bippass` network and add their site block to the BipPass repo's Caddyfile.
 - **Phase 12 — sharing vs API:** LinkedIn's official share plugin (`/sharing/share-offsite/?url=`) only takes a URL; pre-filled post text uses the composer link (`/feed/?shareActive=true&text=`), which LinkedIn supports but doesn't formally document — hence the Copy text fallback.
 - **Phase 12 — memory:** droplet ~957 MB + 2 GB swap; BipPass ≤ ~720 MB, ApplyBuddy ≤ 512 MB, LinkedIn Poster ≤ 384 MB (limits overcommit; swap absorbs it; `linkedin.sh status` shows live usage).
+- **2026-09-25 — Pollinations (anonymous):** only the `sana` model is available without a key; `nologo` is ignored (small watermark). A busy shared pool comes back as HTTP 500 wrapping an upstream 429, so 429/5xx are retried (5s, 10s). Typical render 4–40s.
 - Tests mock the OpenAI SDK with `httpx2.MockTransport` (the SDK uses `httpx2`; respx only intercepts `httpx`).
 - `uv` created the venv with Python 3.14; project requires >= 3.12.

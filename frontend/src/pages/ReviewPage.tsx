@@ -54,28 +54,28 @@ function Review({ threadId }: { threadId: string }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-card-soft px-8">
-        <div className="flex items-center gap-4">
+      <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line bg-card-soft px-4 py-3 sm:px-8">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Link
             to={`/chat/${threadId}`}
             aria-label="Back to chat"
-            className="flex size-10 items-center justify-center rounded-[10px] border border-line-strong bg-card text-ink"
+            className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-line-strong bg-card text-ink"
           >
             <Icon name="arrowLeft" strokeWidth={2} />
           </Link>
-          <h1 className="m-0 font-display text-[28px] font-normal">Review draft</h1>
-          <span className="rounded-full bg-review-soft px-2.5 py-1 text-xs font-semibold text-review">
+          <h1 className="m-0 font-display text-[24px] font-normal whitespace-nowrap sm:text-[28px]">Review draft</h1>
+          <span className="hidden rounded-full bg-review-soft px-2.5 py-1 text-xs font-semibold text-review sm:inline">
             Needs your decision
           </span>
         </div>
-        <span className="font-mono text-xs text-ink-3">
+        <span className="hidden font-mono text-xs text-ink-3 md:inline">
           thread {threadId}
           {thread.revision_count > 0 && ` · revision ${thread.revision_count}`}
         </span>
       </header>
 
-      <div className="flex min-h-0 grow gap-8 px-8 py-7">
-        <section aria-label="Post" className="flex min-w-0 grow flex-col gap-3">
+      <div className="flex min-h-0 grow flex-col gap-6 overflow-y-auto px-4 py-5 sm:px-8 sm:py-7 lg:flex-row lg:gap-8 lg:overflow-hidden">
+        <section aria-label="Post" className="flex min-w-0 shrink-0 flex-col gap-3 lg:shrink lg:grow">
           <div className="flex items-baseline justify-between">
             <h2 className="eyebrow">{mode === 'edit' ? 'Edit the post' : 'Post as it will appear'}</h2>
             <span className={`font-mono text-xs ${(mode === 'edit' ? editChars : review.chars) > MAX_CHARS ? 'text-danger' : 'text-ink-2'}`}>
@@ -91,7 +91,7 @@ function Review({ threadId }: { threadId: string }) {
                 id="edit-post"
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="min-h-0 grow resize-none rounded-[14px] border border-accent bg-card px-8 py-7 text-[15px] leading-relaxed text-ink outline-none"
+                className="min-h-80 grow resize-none rounded-[14px] border border-accent bg-card px-5 py-5 text-[15px] leading-relaxed text-ink outline-none sm:px-8 sm:py-7 lg:min-h-0"
               />
               <p className="m-0 text-xs text-ink-2">
                 Keep hashtags on the last line. Plain text only — LinkedIn doesn’t render markdown. Your version is approved as
@@ -99,13 +99,13 @@ function Review({ threadId }: { threadId: string }) {
               </p>
             </>
           ) : (
-            <div className="min-h-0 grow overflow-y-auto">
-              <PostPreview text={review.post} author={author} subtitle="Public post" size="lg" />
+            <div className="lg:min-h-0 lg:grow lg:overflow-y-auto">
+              <PostPreview text={review.post} author={author} subtitle="Public post" size="lg" image={thread.image} />
             </div>
           )}
         </section>
 
-        <aside aria-label="Critic findings" className="flex w-105 shrink-0 flex-col gap-4 overflow-y-auto">
+        <aside aria-label="Critic findings" className="flex w-full shrink-0 flex-col gap-4 lg:w-105 lg:overflow-y-auto">
           {run.live && (
             <RunCard lines={run.live.lines} current={run.live.current} running startedAt={run.live.startedAt} />
           )}
@@ -158,8 +158,8 @@ function Review({ threadId }: { threadId: string }) {
         </aside>
       </div>
 
-      <footer className="flex h-21 shrink-0 items-center justify-between border-t border-line bg-card-soft px-8">
-        <div className="flex gap-2.5">
+      <footer className="flex min-h-21 shrink-0 flex-wrap-reverse items-center justify-between gap-2.5 border-t border-line bg-card-soft px-4 py-3 sm:px-8">
+        <div className="flex flex-wrap gap-2.5">
           {mode === 'view' && (
             <>
               <SecondaryButton
@@ -179,7 +179,7 @@ function Review({ threadId }: { threadId: string }) {
                 type="button"
                 disabled={busy}
                 onClick={() => decide({ action: 'reject' })}
-                className="h-12 rounded-[10px] border border-danger/30 bg-card px-5 text-[15px] text-danger hover:bg-danger-soft disabled:opacity-50"
+                className="h-12 rounded-[10px] border border-danger/30 bg-card px-4 text-[15px] sm:px-5 text-danger hover:bg-danger-soft disabled:opacity-50"
               >
                 Reject
               </button>
@@ -192,7 +192,7 @@ function Review({ threadId }: { threadId: string }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex grow items-center justify-end gap-2.5 sm:grow-0">
           {mode === 'view' && (
             <>
               <Link to={`/chat/${threadId}`} className="flex h-12 items-center px-4 text-[15px] text-ink-2 no-underline">
@@ -266,7 +266,7 @@ function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       type="button"
       {...props}
-      className="flex h-12 items-center gap-2 rounded-[10px] bg-accent px-7 text-[15px] font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-12 items-center gap-2 rounded-[10px] bg-accent px-5 text-[15px] font-semibold sm:px-7 text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
     />
   )
 }
@@ -276,7 +276,7 @@ function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       type="button"
       {...props}
-      className="flex h-12 items-center gap-2 rounded-[10px] border border-line-strong bg-card px-5 text-[15px] text-ink hover:bg-card-soft disabled:opacity-50"
+      className="flex h-12 items-center gap-2 rounded-[10px] border border-line-strong bg-card px-4 text-[15px] sm:px-5 text-ink hover:bg-card-soft disabled:opacity-50"
     />
   )
 }

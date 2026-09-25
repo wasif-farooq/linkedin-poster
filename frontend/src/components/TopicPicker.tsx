@@ -21,7 +21,7 @@ export function TopicPicker({ payload, busy, onAnswer }: TopicPickerProps) {
   return (
     <section
       aria-labelledby="topic-picker-h"
-      className="flex max-w-180 flex-col gap-4 rounded-[14px] border border-review/40 bg-card px-5 py-4.5"
+      className="flex max-w-180 flex-col gap-4 rounded-[14px] border border-review/40 bg-card px-4 py-4.5 sm:px-5"
     >
       <div className="flex items-baseline justify-between gap-4">
         <h2 id="topic-picker-h" className="m-0 font-display text-2xl font-normal">
@@ -38,11 +38,11 @@ export function TopicPicker({ payload, busy, onAnswer }: TopicPickerProps) {
             key={o.id}
             className="flex flex-col gap-2 rounded-xl border border-line bg-card-soft px-4 py-3.5"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex flex-wrap items-start gap-3">
               <span className="mt-0.5 font-mono text-xs text-ink-3" aria-hidden="true">
                 {o.id + 1}
               </span>
-              <div className="flex min-w-0 grow flex-col gap-1">
+              <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
                 <h3 className="m-0 text-[15px] leading-snug font-semibold">{o.topic}</h3>
                 <p className="m-0 text-[13px] leading-normal text-body">{o.angle}</p>
                 {o.why_now && (
@@ -71,7 +71,7 @@ export function TopicPicker({ payload, busy, onAnswer }: TopicPickerProps) {
                 disabled={busy}
                 onClick={() => onAnswer({ choice: o.id })}
                 aria-label={`Use topic ${o.id + 1}: ${o.topic}`}
-                className="h-10 shrink-0 rounded-[10px] bg-accent px-3.5 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
+                className="h-10 w-full shrink-0 rounded-[10px] bg-accent px-3.5 text-sm sm:w-auto font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
               >
                 Use this
               </button>

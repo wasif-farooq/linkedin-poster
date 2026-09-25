@@ -33,6 +33,7 @@ export type AgentKey =
   | 'researcher'
   | 'writer'
   | 'critic'
+  | 'illustrator'
   | 'human_review'
   | 'publisher'
 
@@ -42,6 +43,7 @@ export const AGENT_LABELS: Record<AgentKey, string> = {
   researcher: 'Researcher',
   writer: 'Writer',
   critic: 'Critic',
+  illustrator: 'Illustrator',
   human_review: 'Your review',
   publisher: 'Publisher',
 }

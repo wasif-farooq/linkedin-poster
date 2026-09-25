@@ -40,6 +40,20 @@ const paths = {
     </>
   ),
   x: <path d="M18 6L6 18M6 6l12 12" />,
+  menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="M21 16l-5-5L5 20" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 4v11M7 10l5 5 5-5" />
+      <path d="M4 20h16" />
+    </>
+  ),
   sun: (
     <>
       <circle cx="12" cy="12" r="4" />

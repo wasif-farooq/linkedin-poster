@@ -21,6 +21,7 @@ TOPIC_RESET = {
     "research_brief": None,
     "draft": None,
     "critique": None,
+    "image": None,
     "revision_count": 0,
     "human_feedback": None,
     "approved": False,
@@ -138,6 +139,11 @@ def summarize_state(state: Mapping) -> str:
         lines += [f"  - {i}" for i in (c.rule_errors + c.issues)[:3]]
     elif state.get("draft"):
         lines.append("Critic: current draft not reviewed yet")
+    image = state.get("image")
+    if image:
+        lines.append(f"Image: generated ({image['provider']}). Shows: {image['alt_text']}")
+    elif state.get("draft"):
+        lines.append("Image: none (text-only post)")
     lines.append(f"Revisions so far: {state.get('revision_count') or 0}")
     if state.get("approved"):
         lines.append("Approval: the user APPROVED the current draft (final post locked in)")

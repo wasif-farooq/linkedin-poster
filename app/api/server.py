@@ -76,6 +76,10 @@ class Shared(BaseModel):
     article_url: str | None = Field(default=None, max_length=2000)
 
 
+class ImageRequest(BaseModel):
+    direction: str = Field(default="", max_length=500)  # style, e.g. "photo, dark background"
+
+
 class VoiceText(BaseModel):
     text: str = Field(max_length=MAX_VOICE_CHARS)
 
@@ -254,7 +258,7 @@ def create_app(checkpointer=None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=DEV_ORIGINS,
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],
     )
 
@@ -327,6 +331,64 @@ def create_app(checkpointer=None) -> FastAPI:
         )
         return thread_snapshot(r.graph, thread_id)
 
+    @app.post("/api/threads/{thread_id}/image")
+    def generate_image(body: ImageRequest, thread_id: str = ThreadId) -> dict:
+        """Make (or remake) the post's image directly, without a Manager turn."""
+        from app.agents.illustrator import illustrate
+        from app.schemas.image import PostImage
+        from app.schemas.post import Draft
+        from app.tools.images.generate import ImageGenerationError
+
+        r = runner()
+        if not r.lock.acquire(blocking=False):
+            raise HTTPException(409, "Another run is in progress. Try again when it finishes.")
+        try:
+            config = config_for(thread_id)
+            values = _editable_values(r, config)
+            if not values.get("draft"):
+                raise HTTPException(409, "Write a draft first; the image is made from the post.")
+            tracker.reset(max_calls=get_settings().max_llm_calls_per_run)
+            topic = values.get("topic")
+            try:
+                image = illustrate(
+                    Draft.model_validate(values["draft"]),
+                    topic=topic if isinstance(topic, str) else (topic or {}).get("topic", ""),
+                    direction=body.direction,
+                    previous=PostImage.model_validate(values["image"])
+                    if values.get("image")
+                    else None,
+                )
+            except ImageGenerationError as exc:
+                raise HTTPException(502, str(exc)) from exc
+            except KNOWN_ERRORS as exc:
+                raise HTTPException(502, (describe_error(exc) or (2, str(exc)))[1]) from exc
+            r.graph.update_state(config, {"image": image.model_dump()})
+        finally:
+            r.lock.release()
+        return thread_snapshot(r.graph, thread_id)
+
+    @app.delete("/api/threads/{thread_id}/image")
+    def remove_image(thread_id: str = ThreadId) -> dict:
+        """Post without an image (the file is kept; history may still point at it)."""
+        r = _require_idle(runner())
+        config = config_for(thread_id)
+        if _editable_values(r, config).get("image"):
+            r.graph.update_state(config, {"image": None})
+        return thread_snapshot(r.graph, thread_id)
+
+    @app.get("/api/images/{name}")
+    def get_image(name: str) -> FileResponse:
+        from app.tools.images.generate import MEDIA_TYPES, image_path
+
+        path = image_path(name)
+        if path is None:
+            raise HTTPException(404, "Image not found")
+        return FileResponse(
+            path,
+            media_type=MEDIA_TYPES[path.suffix.lstrip(".")],
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},  # names are unique
+        )
+
     # history, health, settings ---------------------------------------------------------
 
     @app.get("/api/history")
@@ -396,6 +458,7 @@ def create_app(checkpointer=None) -> FastAPI:
             },
             "linkedin_version": s.linkedin_version,
             "publish_mode": s.publish_mode,
+            "image_provider": _image_provider(),
             "publish_dry_run": s.publish_dry_run,
         }
 
@@ -453,6 +516,12 @@ def _validate_answer(kind: str | None, answer: dict) -> None:
         raise HTTPException(422, f"Invalid answer for this {kind or 'review'}: {exc}") from exc
 
 
+def _image_provider() -> str:
+    from app.tools.images.generate import provider_name
+
+    return provider_name()
+
+
 def _source_urls(values: dict) -> list[str]:
     """The conversation's article links: the Scout's picks first, then the brief's sources."""
     topic = values.get("topic")
@@ -461,6 +530,15 @@ def _source_urls(values: dict) -> list[str]:
         if source.get("url") and source["url"] not in urls:
             urls.append(source["url"])
     return urls
+
+
+def _editable_values(r: Runner, config: dict) -> dict:
+    """State of a conversation that isn't paused on a question. Writing to a paused one
+    would replace the checkpoint holding the question, and the answer would be lost."""
+    snap = r.graph.get_state(config)
+    if snap.interrupts:
+        raise HTTPException(409, "Answer the pending question in this conversation first.")
+    return snap.values or {}
 
 
 def _require_idle(r: Runner) -> Runner:

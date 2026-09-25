@@ -72,6 +72,21 @@ export function ShareActions({ thread, onShared }: ShareActionsProps) {
           {copied ? 'Copied' : 'Copy text'}
         </button>
       </div>
+      {thread.image && (
+        <div className="flex items-start gap-2.5 rounded-[10px] bg-review-soft px-3 py-2.5 text-[13px] text-review">
+          <Icon name="image" size={16} strokeWidth={2} className="mt-0.5 shrink-0" />
+          <span className="grow">
+            LinkedIn’s share link can’t carry an image. Download it, then add it in the composer with the photo icon.
+          </span>
+          <a
+            href={thread.image.url}
+            download={`linkedin-post-image.${thread.image.file.split('.').pop()}`}
+            className="shrink-0 font-medium text-review"
+          >
+            Download
+          </a>
+        </div>
+      )}
       <p className="m-0 text-xs text-ink-3">
         Opens LinkedIn with this post filled in — review it there and press Post. If the text doesn’t appear, use Copy
         text and paste it.

@@ -343,11 +343,20 @@ from app.tools.linkedin.client import LinkedInAuthError  # noqa: E402
 from app.tools.linkedin.oauth import LinkedInToken  # noqa: E402
 
 
+class PostLog(list):
+    """(author, text) per post, plus the uploaded image bytes and each post's media."""
+
+    def __init__(self):
+        super().__init__()
+        self.uploads: list[bytes] = []
+        self.media: list[tuple[str | None, str]] = []
+
+
 @pytest.fixture
 def linkedin(monkeypatch):
     """Fake LinkedIn: records posts instead of calling the API (PUBLISH_MODE=api)."""
     monkeypatch.setattr(get_settings(), "publish_mode", "api")
-    posted: list[tuple[str, str]] = []
+    posted = PostLog()
 
     class FakeClient:
         def __init__(self, token, *, version):
@@ -359,8 +368,13 @@ def linkedin(monkeypatch):
         def __exit__(self, *exc):
             pass
 
-        def create_post(self, author, text):
+        def upload_image(self, owner, data):
+            posted.uploads.append(data)
+            return f"urn:li:image:{len(posted.uploads)}"
+
+        def create_post(self, author, text, *, image_urn=None, alt_text=""):
             posted.append((author, text))
+            posted.media.append((image_urn, alt_text))
             return f"urn:li:share:{len(posted)}"
 
     monkeypatch.setattr(publisher, "LinkedInClient", FakeClient)
@@ -601,3 +615,71 @@ def test_invalid_pick_answer_is_rejected(world, shortlisting):
     world["resume"]({"choice": 0, "more": True})  # two answers at once
     assert world["pending"]()["type"] == "topic_choice"  # asked again, nothing broke
     assert world["calls"] == ["topic_scout"]
+
+
+# --- images -------------------------------------------------------------------------------
+
+from app import config  # noqa: E402
+from app.agents import illustrator  # noqa: E402
+
+
+@pytest.fixture
+def drawing(world, monkeypatch):
+    """Fake Illustrator: writes a real file (so the publisher can upload it)."""
+
+    def draw(state):
+        world["calls"].append(f"illustrator({state.get('instructions') or ''})")
+        n = sum(c.startswith("illustrator") for c in world["calls"])
+        name = f"{n:032x}.png"
+        config.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+        (config.IMAGES_DIR / name).write_bytes(b"PNG%d" % n)
+        image = {"prompt": "p", "alt_text": f"image {n}", "file": name, "provider": "fake"}
+        return {"image": image | {"direction": ""}}
+
+    monkeypatch.setattr(illustrator, "run", draw)
+
+
+def test_make_an_image_for_the_draft(world, drawing):
+    world["script"](decision(plan=FULL_PLAN), decision(reply="Ready."))
+    world["say"]("write a post", APPROVE)
+    world["script"](
+        decision(plan=["illustrator"], instructions="photo style"), decision(reply="Here it is.")
+    )
+    state = world["say"]("make an image, photo style")
+    assert world["calls"][-1] == "illustrator(photo style)"
+    assert state["image"]["alt_text"] == "image 1"
+    assert state["approved"]  # an image doesn't undo the approval
+    assert any(a.startswith("illustrator: made an image") for a in state["activity"])
+
+
+def test_image_without_a_draft_writes_the_post_first(world, drawing):
+    world["script"](decision(plan=["illustrator"]), decision(reply="ok"))
+    state = world["say"]("make me a post with an image", APPROVE)
+    assert world["calls"][:5] == [
+        "topic_scout",
+        "researcher",
+        "writer(feedback=None)",
+        "critic",
+        "illustrator()",
+    ]
+    assert state["image"] and state["approved"]
+
+
+def test_text_edits_keep_the_image_but_a_new_topic_drops_it(world, drawing):
+    world["script"](decision(plan=[*FULL_PLAN, "illustrator"]), decision(reply="ok"))
+    world["say"]("write a post with an image", APPROVE)
+    world["script"](decision(plan=["writer", "critic"], feedback="shorter"), decision(reply="ok"))
+    assert world["say"]("make it shorter", APPROVE)["image"]["alt_text"] == "image 1"
+    world["script"](decision(plan=["researcher"], topic_override="Something else"), decision())
+    assert world["say"]("write about something else")["image"] is None
+
+
+def test_publishing_uploads_the_image(world, linkedin, drawing):
+    world["script"](decision(plan=[*FULL_PLAN, "illustrator"]), decision(reply="ok"))
+    world["say"]("write a post with an image", APPROVE)
+    world["script"](decision(plan=["publisher"]), decision(reply="Posted!"))
+    world["say"]("post it")
+    assert world["pending"]()["image"] == f"/api/images/{1:032x}.png"
+    world["resume"](CONFIRM)
+    assert linkedin.uploads == [b"PNG1"]
+    assert linkedin.media == [("urn:li:image:1", "image 1")]

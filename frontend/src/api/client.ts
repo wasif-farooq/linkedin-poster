@@ -113,6 +113,14 @@ export const api = {
       body: JSON.stringify({ article_url: articleUrl }),
     }),
 
+  generateImage: (id: string, direction: string) =>
+    request<ThreadSnapshot>(`/api/threads/${encodeURIComponent(id)}/image`, {
+      method: 'POST',
+      body: JSON.stringify({ direction }),
+    }),
+  removeImage: (id: string) =>
+    request<ThreadSnapshot>(`/api/threads/${encodeURIComponent(id)}/image`, { method: 'DELETE' }),
+
   history: (includeDryRuns = true) =>
     request<HistoryPost[]>(`/api/history?include_dry_runs=${includeDryRuns}`),
   doctor: () => request<DoctorCheck[]>('/api/doctor'),

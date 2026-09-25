@@ -75,6 +75,9 @@ def thread_snapshot(graph, thread_id: str) -> dict[str, Any]:
             "chars": len(parsed.full_text()),
         }
     topic = values.get("topic")
+    image = values.get("image")
+    if image:
+        image = image | {"url": f"/api/images/{image['file']}"}
     return {
         "id": thread_id,
         "title": thread_title(values),
@@ -86,6 +89,7 @@ def thread_snapshot(graph, thread_id: str) -> dict[str, Any]:
         "research_brief": values.get("research_brief"),
         "draft": draft,
         "critique": values.get("critique"),
+        "image": image,
         "revision_count": values.get("revision_count") or 0,
         "approved": bool(values.get("approved")),
         "final_post": values.get("final_post"),

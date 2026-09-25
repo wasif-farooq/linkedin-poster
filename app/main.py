@@ -432,6 +432,7 @@ def _chat_help() -> None:
     console.print(
         "Ask the Manager in plain English. Commands: /draft (show current draft), /quit.\n"
         "Every new draft is shown to you for review: approve, edit, revise, reject, or later.\n"
+        "Say 'make an image' (optionally with a style) for a picture to go with the post.\n"
         "Say 'let me review it' to bring a draft back for approval, and 'post it' to publish\n"
         "(you'll get a final yes/no). Run `linkedin-poster auth` once to connect LinkedIn."
     )
@@ -443,6 +444,7 @@ AGENT_LABELS = {
     "researcher": "📚 Researcher",
     "writer": "✍️  Writer",
     "critic": "🧐 Critic",
+    "illustrator": "🖼  Illustrator",
     "human_review": "👤 Your review",
     "publisher": "🚀 Publisher",
 }
@@ -605,7 +607,8 @@ def _ask_publish(payload: dict) -> dict | None:
         Panel(
             escape(payload["post"]),
             title=f"Publish to LinkedIn as {escape(payload.get('account') or 'you')}?",
-            subtitle=f"{payload['chars']} chars · public post",
+            subtitle=f"{payload['chars']} chars · public post"
+            + (" · with image" if payload.get("image") else ""),
             border_style="red",
             width=min(console.width, 90),
         )
@@ -649,6 +652,12 @@ def _show_turn_result(graph, config, before: dict, shown: dict) -> None:
                 width=min(console.width, 90),
             )
         )
+    image = state.get("image")
+    if image and image != before.get("image"):
+        from app import config as app_config
+
+        path = app_config.IMAGES_DIR / image["file"]
+        console.print(f"[green]🖼  Image ({escape(image['provider'])}):[/green] {escape(str(path))}")
     result = state.get("publish_result") or {}
     if result != (before.get("publish_result") or {}):
         if result.get("status") == "published":

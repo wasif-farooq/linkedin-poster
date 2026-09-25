@@ -70,6 +70,37 @@ def test_create_post_sends_versioned_request_and_returns_urn():
 
 
 @respx.mock
+def test_image_upload_then_post_with_media():
+    init = respx.post("https://api.linkedin.com/rest/images").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "value": {
+                    "uploadUrl": "https://www.linkedin.com/dms-uploads/abc",
+                    "image": "urn:li:image:C4D",
+                }
+            },
+        )
+    )
+    upload = respx.put("https://www.linkedin.com/dms-uploads/abc").mock(
+        return_value=httpx.Response(201)
+    )
+    post = respx.post(POSTS).mock(
+        return_value=httpx.Response(201, headers={"x-restli-id": "urn:li:share:9"})
+    )
+    with LinkedInClient("tok", version="202609") as client:
+        urn = client.upload_image("urn:li:person:abc", b"PNGDATA")
+        client.create_post("urn:li:person:abc", "Hi", image_urn=urn, alt_text="A lake")
+    assert init.calls.last.request.url.params["action"] == "initializeUpload"
+    assert json.loads(init.calls.last.request.content) == {
+        "initializeUploadRequest": {"owner": "urn:li:person:abc"}
+    }
+    assert upload.calls.last.request.content == b"PNGDATA"
+    body = json.loads(post.calls.last.request.content)
+    assert body["content"] == {"media": {"id": "urn:li:image:C4D", "altText": "A lake"}}
+
+
+@respx.mock
 def test_userinfo():
     respx.get(USERINFO).mock(return_value=httpx.Response(200, json={"sub": "abc", "name": "Me"}))
     with LinkedInClient("tok", version="202609") as client:

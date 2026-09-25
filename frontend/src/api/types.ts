@@ -76,6 +76,15 @@ export interface Critique {
   rule_warnings: string[]
 }
 
+export interface PostImage {
+  url: string // served by the API: /api/images/<file>
+  file: string
+  prompt: string
+  alt_text: string
+  provider: string
+  direction: string
+}
+
 export interface PublishResult {
   status: 'published' | 'dry_run' | 'already_published' | 'cancelled' | 'share_ready' | 'shared'
   urn: string | null
@@ -98,6 +107,7 @@ export interface PublishConfirmPayload {
   post: string
   chars: number
   account: string
+  image: string | null
 }
 
 export interface TopicOptionView {
@@ -128,6 +138,7 @@ export interface ThreadSnapshot {
   research_brief: ResearchBrief | null
   draft: Draft | null
   critique: Critique | null
+  image: PostImage | null
   revision_count: number
   approved: boolean
   final_post: string | null
@@ -144,6 +155,7 @@ export interface Usage {
   rate_limit_retries: number
   searches: number
   search_cache_hits: number
+  images?: number
 }
 
 export type ReviewAnswer =
@@ -213,4 +225,5 @@ export interface AppSettings {
   linkedin_version: string
   publish_dry_run: boolean
   publish_mode: 'share' | 'api'
+  image_provider: 'pollinations' | 'openai'
 }

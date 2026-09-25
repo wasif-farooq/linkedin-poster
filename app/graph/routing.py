@@ -15,6 +15,7 @@ PREREQUISITES = {
     "researcher": ("topic", ["topic_scout"]),
     "writer": ("research_brief", ["researcher"]),
     "critic": ("draft", ["writer"]),
+    "illustrator": ("draft", ["writer", "critic"]),
     # A brand-new draft is scored by the critic before a human sees it. (A draft the user
     # edited themselves has no critique on purpose: the critic must not rewrite it.)
     "human_review": ("draft", ["writer", "critic"]),

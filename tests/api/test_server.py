@@ -343,3 +343,74 @@ def test_resume_rejects_answers_that_dont_fit_the_question(client, script):
         client.post("/api/threads/t1/resume", json={"answer": {"action": "approve"}}).status_code
         == 200
     )
+
+
+# --- images -------------------------------------------------------------------------------
+
+from app.agents import illustrator  # noqa: E402
+from app.schemas.image import PostImage  # noqa: E402
+from app.tools.images.generate import ImageGenerationError  # noqa: E402
+
+
+@pytest.fixture
+def fake_illustrate(monkeypatch):
+    from app import config
+
+    calls: list[dict] = []
+
+    def illustrate(draft, *, topic="", direction="", previous=None):
+        calls.append({"topic": topic, "direction": direction, "previous": previous})
+        name = f"{len(calls):032x}.png"
+        config.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+        (config.IMAGES_DIR / name).write_bytes(b"\x89PNG")
+        return PostImage(
+            prompt="p", alt_text="alt", file=name, provider="fake", direction=direction
+        )
+
+    monkeypatch.setattr(illustrator, "illustrate", illustrate)
+    return calls
+
+
+def test_generate_image_serve_it_and_remove_it(client, script, monkeypatch, fake_illustrate):
+    _approved_thread(client, script, monkeypatch)
+    snap = client.post("/api/threads/t1/image", json={"direction": "dark"}).json()
+    assert snap["image"]["url"] == f"/api/images/{1:032x}.png" and snap["approved"]
+    assert fake_illustrate[0]["topic"] == "Agents as config"
+    assert fake_illustrate[0]["direction"] == "dark"
+
+    served = client.get(snap["image"]["url"])
+    assert served.status_code == 200 and served.content == b"\x89PNG"
+    assert served.headers["content-type"] == "image/png"
+
+    again = client.post("/api/threads/t1/image", json={}).json()
+    assert again["image"]["file"] != snap["image"]["file"]
+    assert fake_illustrate[1]["previous"].file == snap["image"]["file"]  # "make it different"
+
+    assert client.delete("/api/threads/t1/image").json()["image"] is None
+
+
+def test_generate_image_guards(client, script, fake_illustrate):
+    assert client.post("/api/threads/t1/image", json={}).status_code == 409  # no draft
+    script(decision(plan=FULL_PLAN), decision(reply="ok"))
+    client.post("/api/threads/t1/messages", json={"text": "write a post", "auto_topic": True})
+    busy = client.post("/api/threads/t1/image", json={})  # paused on the review question
+    assert busy.status_code == 409 and "pending question" in busy.json()["detail"]
+    assert client.get("/api/threads/t1").json()["status"] == "needs_review"  # untouched
+    assert fake_illustrate == []
+
+
+def test_generate_image_failure_is_a_readable_502(client, script, monkeypatch):
+    _approved_thread(client, script, monkeypatch)
+
+    def fail(*a, **kw):
+        raise ImageGenerationError("Pollinations is rate limiting; wait a minute and retry.")
+
+    monkeypatch.setattr(illustrator, "illustrate", fail)
+    resp = client.post("/api/threads/t1/image", json={})
+    assert resp.status_code == 502 and "rate limiting" in resp.json()["detail"]
+    assert client.get("/api/health").json()["busy"] is False  # lock released
+
+
+@pytest.mark.parametrize("name", ["nope.png", "..%2Fhistory.db", "a" * 32 + ".png"])
+def test_images_route_serves_only_generated_files(client, name):
+    assert client.get(f"/api/images/{name}").status_code == 404

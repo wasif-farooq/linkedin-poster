@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { LinkedInStatus, ThreadSummary } from '../api/types'
 import { Icon, type IconName } from '../components/Icon'
 import { StatusPill } from '../components/StatusPill'
+import { LG, useMediaQuery } from '../hooks/useMediaQuery'
 import { useTheme } from '../hooks/useTheme'
 
 const NAV: { to: string; label: string; icon: IconName }[] = [
@@ -12,17 +13,21 @@ const NAV: { to: string; label: string; icon: IconName }[] = [
 ]
 
 interface SidebarProps {
+  open: boolean // narrow screens: the drawer is showing
+  onClose: () => void
   threads: ThreadSummary[]
   threadsError: Error | undefined
   linkedin: LinkedInStatus | undefined
 }
 
-export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
+export function Sidebar({ open, onClose, threads, threadsError, linkedin }: SidebarProps) {
   const navigate = useNavigate()
   const threadId = useMatch('/chat/:threadId')?.params.threadId
   const [theme, toggleTheme] = useTheme()
+  const docked = useMediaQuery(LG) // wide screens: always shown, never a drawer
 
   async function newConversation() {
+    onClose()
     try {
       const { id } = await api.createThread()
       navigate(`/chat/${id}`)
@@ -32,21 +37,37 @@ export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
   }
 
   return (
-    <aside className="flex w-66 shrink-0 flex-col border-r border-line bg-paper-2">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] shrink-0 flex-col border-r border-line bg-paper-2 transition-transform duration-200 lg:static lg:z-auto lg:w-66 lg:translate-x-0 lg:transition-none ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+      inert={!docked && !open}
+      aria-label="Navigation"
+    >
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
         <span className="flex items-baseline gap-2">
           <span className="font-display text-3xl leading-none">Poster</span>
           <span className="font-mono text-[11px] text-ink-3">v0.1</span>
         </span>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
-          className="flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-card hover:text-ink"
-        >
-          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
-        </button>
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+            className="flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-card hover:text-ink"
+          >
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className="flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-card hover:text-ink lg:hidden"
+          >
+            <Icon name="x" />
+          </button>
+        </span>
       </div>
 
       <nav aria-label="Main" className="flex flex-col gap-0.5 px-3">
@@ -54,6 +75,7 @@ export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm no-underline ${
                 isActive
@@ -91,6 +113,7 @@ export function Sidebar({ threads, threadsError, linkedin }: SidebarProps) {
           <li key={t.id}>
             <NavLink
               to={`/chat/${t.id}`}
+              onClick={onClose}
               aria-current={t.id === threadId ? 'page' : undefined}
               className={`flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-ink no-underline ${
                 t.id === threadId ? 'bg-accent-soft' : 'hover:bg-card/60'

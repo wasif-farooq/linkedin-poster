@@ -1,5 +1,6 @@
 import pytest
 
+from app import config
 from app.db import models
 from app.tools.linkedin import oauth
 from app.tools.sources import web_search
@@ -11,3 +12,4 @@ def isolate_data(tmp_path, monkeypatch):
     monkeypatch.setattr(models, "HISTORY_DB", tmp_path / "history.db")
     monkeypatch.setattr(oauth, "TOKEN_PATH", tmp_path / "linkedin_token.json")
     monkeypatch.setattr(web_search, "CACHE_DIR", tmp_path / "search-cache")
+    monkeypatch.setattr(config, "IMAGES_DIR", tmp_path / "images")

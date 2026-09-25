@@ -19,7 +19,7 @@ export function Toast({ title, body, href, linkText = 'View post', onClose, time
   return (
     <div
       role="status"
-      className="fixed right-8 bottom-8 z-50 flex w-95 items-start gap-3 rounded-[14px] bg-inverse px-4.5 py-4 text-on-inverse shadow-[0_16px_40px_rgba(26,25,22,0.3)]"
+      className="fixed inset-x-4 bottom-4 z-50 flex sm:inset-x-auto sm:right-8 sm:bottom-8 sm:w-95 items-start gap-3 rounded-[14px] bg-inverse px-4.5 py-4 text-on-inverse shadow-[0_16px_40px_rgba(26,25,22,0.3)]"
     >
       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success" aria-hidden="true">
         <Icon name="check" size={16} strokeWidth={2.6} className="text-card" />
